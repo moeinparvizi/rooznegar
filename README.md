@@ -7,7 +7,21 @@
 
 نسخه‌ی شخصی است: بدون حساب کاربری، بدون سرور، با ذخیره‌ی محلی و کار کامل آفلاین.
 
-**نسخه‌ی زنده:** [moeinparvizi.github.io/rooznegar](https://moeinparvizi.github.io/rooznegar/)
+## دمو و تصاویر
+
+**نسخه‌ی زنده:** [moeinparvizi.github.io/rooznegar](https://moeinparvizi.github.io/rooznegar/) — بدون حساب، نصب‌شدنی روی خانه‌ی گوشی، و کاملاً آفلاین بعد از اولین بازدید.
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/today-mobile-light.jpg" width="250" alt="نمای امروز در تم روشن؛ کار بزرگ روز و خط زمان"><br><sub>امروز · تم روشن</sub></td>
+    <td align="center"><img src="docs/screenshots/week-mobile-light.jpg" width="250" alt="نمای هفته؛ باغ هفت‌روزه و نقشه‌ی خانه‌های روز"><br><sub>هفته · باغ و نقشه</sub></td>
+    <td align="center"><img src="docs/screenshots/progress-mobile-light.jpg" width="250" alt="نمای پیشرفت؛ مسیر CEFR، پیش‌بینی سطح و تمرکز"><br><sub>پیشرفت · مسیر CEFR</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/today-mobile-dark.jpg" width="250" alt="نمای امروز در تم تاریک"><br><sub>امروز · تم تاریک</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/desktop-light.jpg" width="560" alt="نمای دسکتاپ دو ستونه"><br><sub>دسکتاپ · دو ستون</sub></td>
+  </tr>
+</table>
 
 ## وایرفریم متنی · نمای روز
 
