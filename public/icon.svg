@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="روزنگار">
+  <rect width="512" height="512" rx="118" fill="#2e5344"/>
+  <path d="M104 382h304" stroke="#f4efe3" stroke-opacity=".28" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="104" cy="382" r="7" fill="#d6b878"/>
+  <circle cx="408" cy="382" r="4" fill="#f4efe3" fill-opacity=".4"/>
+  <path d="M256 382c-4-52 6-84 2-128" stroke="#f4efe3" stroke-width="9" stroke-linecap="round" fill="none"/>
+  <path d="M258 318c-30-2-48-18-52-44 28-2 48 14 52 44Z" fill="#bfd6b8"/>
+  <path d="M257 288c26-6 40-22 40-44-25 2-38 18-40 44Z" fill="#d6b878" fill-opacity=".92"/>
+  <g fill="#f4efe3">
+    <ellipse cx="256" cy="186" rx="24" ry="42"/>
+    <ellipse cx="256" cy="186" rx="24" ry="42" transform="rotate(72 256 224)"/>
+    <ellipse cx="256" cy="186" rx="24" ry="42" transform="rotate(144 256 224)"/>
+    <ellipse cx="256" cy="186" rx="24" ry="42" transform="rotate(216 256 224)"/>
+    <ellipse cx="256" cy="186" rx="24" ry="42" transform="rotate(288 256 224)"/>
+  </g>
+  <circle cx="256" cy="224" r="19" fill="#d6b878"/>
+  <circle cx="256" cy="224" r="7" fill="#2e5344"/>
+</svg>
