@@ -7,6 +7,8 @@
 
 نسخه‌ی شخصی است: بدون حساب کاربری، بدون سرور، با ذخیره‌ی محلی و کار کامل آفلاین.
 
+**نسخه‌ی زنده:** [moeinparvizi.github.io/rooznegar](https://moeinparvizi.github.io/rooznegar/)
+
 ## وایرفریم متنی · نمای روز
 
 ### دسکتاپ (سه ناحیه در RTL)
