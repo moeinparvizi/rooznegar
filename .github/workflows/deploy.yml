@@ -21,9 +21,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
-      - run: npm ci
+      # Lockfile is generated on macOS; npm ci rejects Linux-only optional wasm deps.
+      - run: npm install --no-audit --no-fund
       - uses: actions/configure-pages@v5
       - run: NEXT_PUBLIC_BASE_PATH=/rooznegar npm run build
       - uses: actions/upload-pages-artifact@v3
