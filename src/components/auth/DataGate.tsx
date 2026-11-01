@@ -49,7 +49,9 @@ export function DataGate({ children }: { children: React.ReactNode }) {
     (async () => {
       const raw = await readRawUserData(userId, STORAGE_KEY);
       if (cancelled) return;
-      if (!raw) useAppStore.setState(createAccountData());
+      if (!raw) {
+        useAppStore.setState({ ...createAccountData(), seededLocally: true });
+      }
       await useAppStore.persist.rehydrate();
       if (cancelled) return;
       setLoadedFor(userId);

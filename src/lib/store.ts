@@ -64,6 +64,7 @@ interface FocusLog {
 }
 
 interface StoreState extends AppDataV2 {
+  seededLocally: boolean;
   toggleDone: (date: string, task: Task) => void;
   ensureDay: (date: string) => void;
   setMode: (date: string, mode: Mode) => void;
@@ -80,6 +81,7 @@ interface StoreState extends AppDataV2 {
   updateSettings: (patch: Partial<AppSettingsV2>) => void;
   setTheme: (theme: ThemeChoice) => void;
   initializeForUser: (data: AppDataV2) => void;
+  replaceFromRemote: (data: AppDataV2) => boolean;
   saveProfile: (patch: Partial<Profile>) => void;
   regenerateWeekTemplate: () => void;
   exportJson: () => string;
@@ -127,6 +129,7 @@ export const useAppStore = create<StoreState>()(
   persist(
     (set, get) => ({
       ...createAccountData(),
+      seededLocally: false,
 
       ensureDay: (date) =>
         set((state) => {
@@ -370,6 +373,14 @@ export const useAppStore = create<StoreState>()(
       },
 
       initializeForUser: (data) => set(stamp({ ...data })),
+
+      replaceFromRemote: (data) => {
+        const migrated = migrateData({ app: "rooznegar", version: 2, data });
+        if (!migrated) return false;
+        set({ ...migrated, seededLocally: false });
+        applyThemeChoice(migrated.settings.theme);
+        return true;
+      },
 
       saveProfile: (patch) =>
         set((state) =>
