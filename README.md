@@ -9,7 +9,7 @@
 
 ## دمو و تصاویر
 
-**نسخه‌ی زنده:** [moeinparvizi.github.io/rooznegar](https://moeinparvizi.github.io/rooznegar/) — نسخه‌ی پایدار امروز؛ نسخه‌ی حساب‌دار این شاخه بعد از تنظیم Supabase روی همین آدرس می‌نشیند ([راهنمای Supabase](docs/SUPABASE_SETUP.md)).
+**نسخه‌ی زنده:** [moeinparvizi.github.io/rooznegar](https://moeinparvizi.github.io/rooznegar/) — نسخه‌ی حساب‌دار روی همین آدرس منتشر شده است. تا وقتی Supabase تنظیم نشود، صفحه‌ی معرفی باز است و ورود/ثبت‌نام غیرفعال می‌ماند ([راهنمای Supabase](docs/SUPABASE_SETUP.md)).
 
 <table>
   <tr>
