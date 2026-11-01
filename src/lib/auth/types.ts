@@ -35,6 +35,7 @@ export interface AuthClient {
   kind: AuthKind;
   configured: boolean;
   getSession(): Promise<AuthSession>;
+  getAccessToken(): Promise<string | null>;
   onChange(callback: (session: AuthSession) => void): () => void;
   signInWithCode(email: string): Promise<AuthResult>;
   signUpWithPassword(email: string, password: string): Promise<AuthResult>;

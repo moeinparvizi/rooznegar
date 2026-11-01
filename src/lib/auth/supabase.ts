@@ -73,6 +73,16 @@ export function createSupabaseAuth(url: string, anonKey: string): AuthClient {
       }
     },
 
+    async getAccessToken() {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) return null;
+        return data.session?.access_token ?? null;
+      } catch {
+        return null;
+      }
+    },
+
     onChange(callback) {
       const { data } = supabase.auth.onAuthStateChange((_event, session) => {
         callback(mapSession(session));

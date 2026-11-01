@@ -101,6 +101,10 @@ export function createDemoAuth(): AuthClient {
       return readSessionSync();
     },
 
+    async getAccessToken() {
+      return null;
+    },
+
     onChange(callback) {
       listeners.add(callback);
       return () => {

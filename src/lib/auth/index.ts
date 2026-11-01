@@ -27,6 +27,9 @@ function unavailableClient(): AuthClient {
     async getSession() {
       return null;
     },
+    async getAccessToken() {
+      return null;
+    },
     onChange() {
       return () => {};
     },
