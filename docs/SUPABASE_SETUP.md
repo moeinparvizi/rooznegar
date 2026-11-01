@@ -112,7 +112,7 @@ Supabase دیگر فهرست «Redirect URLs» را در داشبورد نگه �
 | نام | مقدار |
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon public key |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | کلید عمومی: `anon` یا `sb_publishable_…` (هر دو یکی‌اند) |
 
 Workflow موجود در [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) همین دو را در زمان build به اپ می‌دهد. `service_role` را اینجا نگذار؛ حتی به‌عنوان Secret هم در build استاتیک لازم نیست.
 
@@ -175,7 +175,7 @@ Workflow سایت را می‌سازد و روی GitHub Pages منتشر می‌
 
 ## امنیت
 
-- anon key عمومی است و بودنش در باندل اشکالی ندارد؛ امنیت از RLS می‌آید.
+- anon / publishable key عمومی است و بودنش در باندل اشکالی ندارد؛ امنیت از RLS می‌آید.
 - `service_role` هرگز در کلاینت، مخزن یا CI قرار نگیرد.
 - رمز SMTP و کلیدهای خصوصی فقط در داشبورد سرویس ایمیل/Supabase بمانند.
 - اگر توکنی جایی عمومی شد، همان لحظه باطلش کن؛ پاک کردن فایل کافی نیست.
