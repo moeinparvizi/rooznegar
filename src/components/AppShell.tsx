@@ -62,10 +62,14 @@ function ThemeToggle() {
 function SideRailGarden() {
   const ready = useIsReady();
   const days = useAppStore((s) => s.days);
+  const settings = useAppStore((s) => s.settings);
+  const categories = useAppStore((s) => s.categories);
+  const weekTemplate = useAppStore((s) => s.weekTemplate);
   const today = useToday();
   if (!ready) return <div className="h-[132px]" />;
-  const streak = streakOf(days, today);
-  const garden = gardenFor(days, today, 7);
+  const bloomData = { settings, categories, weekTemplate };
+  const streak = streakOf(days, today, bloomData);
+  const garden = gardenFor(days, today, 7, bloomData);
   return (
     <Link
       href="/progress/"
@@ -196,8 +200,13 @@ function SideRail() {
 function MobileTopBar() {
   const ready = useIsReady();
   const days = useAppStore((s) => s.days);
+  const settings = useAppStore((s) => s.settings);
+  const categories = useAppStore((s) => s.categories);
+  const weekTemplate = useAppStore((s) => s.weekTemplate);
   const today = useToday();
-  const streak = ready ? streakOf(days, today) : 0;
+  const streak = ready
+    ? streakOf(days, today, { settings, categories, weekTemplate })
+    : 0;
 
   return (
     <header className="mobile-topbar">

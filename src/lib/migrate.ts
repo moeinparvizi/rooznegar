@@ -1,7 +1,7 @@
 import { BUILTIN_CATEGORIES } from "./categories";
 import { DEFAULT_SETTINGS_V2 } from "./defaults";
-import { nextWeekdayKey, todayKey } from "./jalali";
-import { buildDaySchedule } from "./schedule";
+import { todayKey } from "./jalali";
+import { presetWeekTemplate } from "./templates";
 import type {
   AppDataV2,
   AppSettingsV2,
@@ -97,7 +97,7 @@ function normalizeSettings(raw: unknown): AppSettingsV2 {
   return out as AppSettingsV2;
 }
 
-function isBlock(value: unknown): value is TemplateBlock {
+function isBlock(value: unknown): value is WeekTemplate[WeekdayIndex]["blocks"][number] {
   return (
     isRecord(value) &&
     typeof value.id === "string" &&
@@ -109,50 +109,11 @@ function isBlock(value: unknown): value is TemplateBlock {
   );
 }
 
-function toTemplateBlock(task: {
-  id: string;
-  title: string;
-  category: string;
-  startTime: string;
-  endTime: string;
-  priority: 1 | 2 | 3;
-  fixed?: boolean;
-  movable: boolean;
-  compensable?: boolean;
-  core?: boolean;
-  note?: string;
-  muscle?: string;
-}): TemplateBlock {
-  return {
-    id: task.id,
-    title: task.title,
-    categoryId: task.category,
-    start: task.startTime,
-    end: task.endTime,
-    priority: task.priority,
-    fixed: task.fixed ?? false,
-    movable: task.movable,
-    compensable: task.compensable ?? false,
-    core: task.core ?? false,
-    note: task.note,
-    muscle: task.muscle,
-    review: task.id === "weekly-review",
-  };
-}
-
 export function defaultWeekTemplate(
   settings: AppSettingsV2,
   anchor: string = todayKey(),
 ): WeekTemplate {
-  const template = {} as WeekTemplate;
-  for (let index = 0; index < 7; index += 1) {
-    const dateKey = nextWeekdayKey(anchor, index, true);
-    const schedule = buildDaySchedule(dateKey, settings, "early");
-    template[index as WeekdayIndex] = {
-      blocks: schedule.blocks.map(toTemplateBlock),
-    };
-  }
-  return template;
+  return presetWeekTemplate(settings.templateId, settings, anchor);
 }
 
 function normalizeWeekTemplate(

@@ -19,6 +19,7 @@ import {
 } from "./schedule";
 import type {
   AppData,
+  AppSettingsV2,
   Category,
   CategoryDef,
   DayPlan,
@@ -26,10 +27,16 @@ import type {
   WeekTemplate,
 } from "./types";
 
-export interface PlannerData extends AppData {
+export type PlannerData = Omit<AppData, "settings"> & {
+  settings: AppSettingsV2;
   categories?: CategoryDef[];
   weekTemplate?: WeekTemplate;
-}
+};
+
+export type BloomData = Pick<
+  PlannerData,
+  "settings" | "categories" | "weekTemplate"
+>;
 
 export type CellState =
   | "done"
@@ -46,8 +53,39 @@ export const BANDS = [
   { key: "night", label: "شب", from: 1200, to: 1440 },
 ] as const;
 
-export function bloomOf(plan?: DayPlan): boolean {
+export function bloomOf(
+  plan?: DayPlan,
+  data?: BloomData,
+  date?: string,
+): boolean {
   if (!plan) return false;
+  if (data && date) {
+    const schedule = buildDaySchedule(
+      date,
+      data.settings,
+      plan.mode,
+      data.weekTemplate,
+      data.categories,
+      plan.overrides,
+    );
+    const actionable = schedule.blocks.filter(
+      (block) => !isRestCategory(block.category, data.categories),
+    );
+    const done = actionable.filter((block) => plan.overrides[block.id]?.done);
+    if (data.settings.gardenRule === "core") {
+      const big = schedule.blocks.find(
+        (block) => block.id === schedule.bigTaskId,
+      );
+      if (big && plan.overrides[big.id]?.done) return true;
+    } else if (data.settings.gardenRule === "half") {
+      if (actionable.length > 0 && done.length * 2 >= actionable.length) {
+        return true;
+      }
+    } else if (done.length > 0) {
+      return true;
+    }
+    return !!plan.journal?.trim();
+  }
   return (
     plan.langMinutes > 0 ||
     plan.deepMinutes > 0 ||
@@ -59,6 +97,7 @@ export function gardenFor(
   days: Record<string, DayPlan>,
   today: string,
   count = 14,
+  data?: BloomData,
 ) {
   return Array.from({ length: count }, (_, i) => {
     const key = addDaysKey(today, -(count - 1 - i));
@@ -67,7 +106,7 @@ export function gardenFor(
       key,
       label: formatDateShort(parseDateKey(key)),
       weekday: formatDateWithWeekday(parseDateKey(key)),
-      bloom: bloomOf(plan),
+      bloom: bloomOf(plan, data, key),
       isToday: key === today,
       langMinutes: plan?.langMinutes ?? 0,
       variant: (Number(key.replaceAll("-", "")) || i) % 5,
@@ -78,12 +117,13 @@ export function gardenFor(
 export function streakOf(
   days: Record<string, DayPlan>,
   today: string,
+  data?: BloomData,
 ): number {
   let cursor = today;
-  if (!bloomOf(days[today])) cursor = addDaysKey(today, -1);
+  if (!bloomOf(days[today], data, today)) cursor = addDaysKey(today, -1);
   let count = 0;
   for (let i = 0; i < 400; i++) {
-    if (!bloomOf(days[cursor])) break;
+    if (!bloomOf(days[cursor], data, cursor)) break;
     count += 1;
     cursor = addDaysKey(cursor, -1);
   }
@@ -92,7 +132,14 @@ export function streakOf(
 
 function scheduleFor(data: PlannerData, key: string): DaySchedule {
   const plan = data.days[key];
-  return buildDaySchedule(key, data.settings, plan?.mode);
+  return buildDaySchedule(
+    key,
+    data.settings,
+    plan?.mode,
+    data.weekTemplate,
+    data.categories,
+    plan?.overrides,
+  );
 }
 
 function cellFor(
@@ -417,7 +464,10 @@ export function gymStats(data: PlannerData, today: string): GymStats {
     .map((idx) => {
       const key = addDaysKey(currentWeek, idx);
       const plan = data.days[key];
-      const done = !!plan?.overrides.gym?.done;
+      const gymBlock = scheduleFor(data, key).blocks.find(
+        (block) => categoryDef(block.category, data.categories).module === "gym",
+      );
+      const done = gymBlock ? !!plan?.overrides[gymBlock.id]?.done : false;
       let state: "done" | "missed" | "upcoming" | "today";
       if (done) state = "done";
       else if (key === today) state = "today";
@@ -491,7 +541,14 @@ export function todayBlocksFor(
 ): { schedule: DaySchedule; plan: DayPlan | undefined } {
   const plan = data.days[today];
   return {
-    schedule: buildDaySchedule(today, data.settings, plan?.mode),
+    schedule: buildDaySchedule(
+      today,
+      data.settings,
+      plan?.mode,
+      data.weekTemplate,
+      data.categories,
+      plan?.overrides,
+    ),
     plan,
   };
 }

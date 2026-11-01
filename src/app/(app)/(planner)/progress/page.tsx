@@ -69,6 +69,8 @@ export default function ProgressPage() {
   const today = useToday();
   const days = useAppStore((s) => s.days);
   const settings = useAppStore((s) => s.settings);
+  const categories = useAppStore((s) => s.categories);
+  const weekTemplate = useAppStore((s) => s.weekTemplate);
   const baselineLangHours = useAppStore((s) => s.baselineLangHours);
   const reviews = useAppStore((s) => s.reviews);
   const ideas = useAppStore((s) => s.ideas);
@@ -87,12 +89,23 @@ export default function ProgressPage() {
       seededAt: "",
       baselineLangHours,
       settings,
+      categories,
+      weekTemplate,
       days,
       reviews,
       ideas,
       recoveries,
     }),
-    [baselineLangHours, settings, days, reviews, ideas, recoveries],
+    [
+      baselineLangHours,
+      settings,
+      categories,
+      weekTemplate,
+      days,
+      reviews,
+      ideas,
+      recoveries,
+    ],
   );
 
   const summary = useMemo(() => weekSummary(data, today), [data, today]);
@@ -101,7 +114,10 @@ export default function ProgressPage() {
   const focusWeeks = useMemo(() => focusSeries(days, today, 6), [days, today]);
   const gym = useMemo(() => gymStats(data, today), [data, today]);
   const linkedin = useMemo(() => linkedinStats(data, today), [data, today]);
-  const streak = useMemo(() => streakOf(days, today), [days, today]);
+  const streak = useMemo(
+    () => streakOf(days, today, data),
+    [days, today, data],
+  );
 
   const gardenStart = addDaysKey(startOfWeekKey(parseDateKey(today)), -21);
   const gardenDays = useMemo(
@@ -112,13 +128,13 @@ export default function ProgressPage() {
         return {
           key,
           label: toFa(parseDateKey(key).getDate()),
-          bloom: bloomOf(plan),
+          bloom: bloomOf(plan, data, key),
           future: key > today,
           current: key === today,
           variant: (Number(key.replaceAll("-", "")) || index) % 5,
         };
       }),
-    [gardenStart, days, today],
+    [gardenStart, days, today, data],
   );
   const monthBlooms = gardenDays.filter((day) => day.bloom).length;
   const openIdeas = ideas.filter((idea) => idea.status === "idea");

@@ -82,9 +82,16 @@ export default function WeekPage() {
   const selectedSchedule = useMemo(
     () =>
       selectedDay
-        ? buildDaySchedule(selectedDay.key, settings, selectedDay.plan?.mode)
+        ? buildDaySchedule(
+            selectedDay.key,
+            settings,
+            selectedDay.plan?.mode,
+            weekTemplate,
+            categories,
+            selectedDay.plan?.overrides,
+          )
         : null,
-    [selectedDay, settings],
+    [selectedDay, settings, weekTemplate, categories],
   );
 
   const currentReview = reviews.find(

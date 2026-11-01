@@ -278,8 +278,8 @@ export default function TodayPage() {
   const openCommute = useUIStore((s) => s.openCommute);
   const showToast = useUIStore((s) => s.showToast);
 
-  const { schedule, plan } = todayBlocksFor(
-    {
+  const plannerData = useMemo(
+    () => ({
       seededAt: "",
       baselineLangHours: 0,
       settings,
@@ -289,9 +289,11 @@ export default function TodayPage() {
       reviews,
       ideas,
       recoveries,
-    },
-    today,
+    }),
+    [settings, categories, weekTemplate, days, reviews, ideas, recoveries],
   );
+
+  const { schedule, plan } = todayBlocksFor(plannerData, today);
   const mode = schedule.mode;
   const overrides = plan?.overrides ?? {};
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
@@ -299,26 +301,18 @@ export default function TodayPage() {
   const next = nextBlock(schedule.blocks, overrides, nowMinutes);
 
   const summary = useMemo(
-    () =>
-      weekSummary(
-        {
-          seededAt: "",
-          baselineLangHours: 0,
-          settings,
-          categories,
-          weekTemplate,
-          days,
-          reviews,
-          ideas,
-          recoveries,
-        },
-        today,
-      ),
-    [settings, categories, weekTemplate, days, reviews, ideas, recoveries, today],
+    () => weekSummary(plannerData, today),
+    [plannerData, today],
   );
 
-  const garden = useMemo(() => gardenFor(days, today, 7), [days, today]);
-  const streak = useMemo(() => streakOf(days, today), [days, today]);
+  const garden = useMemo(
+    () => gardenFor(days, today, 7, plannerData),
+    [days, today, plannerData],
+  );
+  const streak = useMemo(
+    () => streakOf(days, today, plannerData),
+    [days, today, plannerData],
+  );
 
   const bigTask =
     schedule.blocks.find((block) => block.id === schedule.bigTaskId) ??
@@ -347,7 +341,14 @@ export default function TodayPage() {
   const freedMinutes = selectedTasks.reduce((sum, block) => sum + block.duration, 0);
 
   const proposal = proposalTarget
-    ? buildShiftProposal(today, settings, mode, proposalTarget)
+    ? buildShiftProposal(
+        today,
+        settings,
+        mode,
+        proposalTarget,
+        weekTemplate,
+        categories,
+      )
     : null;
 
   const journalPrompt =

@@ -516,6 +516,8 @@ function ReviewWizard({ open }: { open: boolean }) {
   const showToast = useUIStore((s) => s.showToast);
   const settings = useAppStore((s) => s.settings);
   const days = useAppStore((s) => s.days);
+  const categories = useAppStore((s) => s.categories);
+  const weekTemplate = useAppStore((s) => s.weekTemplate);
   const today = useToday();
   const saveReview = useAppStore((s) => s.saveReview);
 
@@ -533,6 +535,8 @@ function ReviewWizard({ open }: { open: boolean }) {
           seededAt: "",
           baselineLangHours: 0,
           settings,
+          categories,
+          weekTemplate,
           days,
           reviews: [],
           ideas: [],
@@ -540,7 +544,7 @@ function ReviewWizard({ open }: { open: boolean }) {
         },
         today,
       ),
-    [settings, days, today],
+    [settings, categories, weekTemplate, days, today],
   );
 
   const suggestedTarget = useMemo(() => {

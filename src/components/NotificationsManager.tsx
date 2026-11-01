@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { asset } from "@/lib/site";
 import { useAppStore, useToday } from "@/lib/store";
+import { categoryDef } from "@/lib/categories";
 import { buildDaySchedule } from "@/lib/schedule";
 import { timeToMinutes, toFa } from "@/lib/jalali";
 
@@ -49,6 +50,8 @@ async function push(title: string, body: string, tag: string) {
 export function NotificationsManager() {
   const settings = useAppStore((s) => s.settings);
   const days = useAppStore((s) => s.days);
+  const categories = useAppStore((s) => s.categories);
+  const weekTemplate = useAppStore((s) => s.weekTemplate);
   const today = useToday();
 
   useEffect(() => {
@@ -62,12 +65,20 @@ export function NotificationsManager() {
       if (Notification.permission !== "granted") return;
       const now = new Date();
       const plan = days[today];
-      const schedule = buildDaySchedule(today, settings, plan?.mode);
+      const schedule = buildDaySchedule(
+        today,
+        settings,
+        plan?.mode,
+        weekTemplate,
+        categories,
+        plan?.overrides,
+      );
       const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
       if (notifications.blockStart) {
         for (const block of schedule.blocks) {
-          if (!block.core && block.id !== "gym") continue;
+          const def = categoryDef(block.category, categories);
+          if (!block.core && def.module !== "gym") continue;
           if (!block.startTime) continue;
           const start = timeToMinutes(block.startTime);
           if (nowMinutes < start || nowMinutes > start + 1) continue;
@@ -137,7 +148,7 @@ export function NotificationsManager() {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [days, settings, today]);
+  }, [days, settings, today, weekTemplate, categories]);
 
   return null;
 }

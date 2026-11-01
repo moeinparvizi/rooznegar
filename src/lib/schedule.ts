@@ -1,19 +1,27 @@
-import { MUSCLE_ROTATION } from "./categories";
+import { MUSCLE_ROTATION, isGrowthCategory } from "./categories";
 import {
   minutesBetween,
   minutesToTime,
+  nextWeekdayKey,
   shiftTime,
   timeToMinutes,
   toFa,
+  todayKey,
   weekdayIndexFromKey,
 } from "./jalali";
 import type {
   AppSettings,
+  AppSettingsV2,
+  BlockOverride,
   Category,
+  CategoryDef,
   DaySchedule,
   Mode,
   Priority,
   Task,
+  TemplateBlock,
+  WeekTemplate,
+  WeekdayIndex,
 } from "./types";
 
 interface BlockInput {
@@ -54,8 +62,13 @@ function at(start: string, minutes: number) {
   return { start, end: shiftTime(start, minutes) };
 }
 
-export function isWorkday(dateKey: string): boolean {
-  return weekdayIndexFromKey(dateKey) <= 4;
+export function isWorkday(
+  dateKey: string,
+  settings?: { workdays?: number[] },
+): boolean {
+  const index = weekdayIndexFromKey(dateKey);
+  if (settings?.workdays?.length) return settings.workdays.includes(index);
+  return index <= 4;
 }
 
 export function isThursday(dateKey: string): boolean {
@@ -66,8 +79,10 @@ export function isFriday(dateKey: string): boolean {
   return weekdayIndexFromKey(dateKey) === 6;
 }
 
-export function getModeWindow(settings: AppSettings, mode: Mode) {
-  const offset = mode === "late" ? 60 : 0;
+export function getModeWindow(settings: AppSettings | AppSettingsV2, mode: Mode) {
+  const lateShift =
+    "lateShiftMinutes" in settings ? settings.lateShiftMinutes : 60;
+  const offset = mode === "late" ? Math.max(0, lateShift) : 0;
   return {
     start: shiftTime(settings.workStart, offset),
     end: shiftTime(settings.workEnd, offset),
@@ -654,7 +669,7 @@ function fridaySchedule(dateKey: string, settings: AppSettings): {
   return { blocks, recoverable: [] };
 }
 
-export function buildDaySchedule(
+export function buildLegacyDaySchedule(
   dateKey: string,
   settings: AppSettings,
   preferredMode?: Mode,
@@ -713,6 +728,159 @@ export function buildDaySchedule(
   };
 }
 
+export function toTemplateBlock(task: Task): TemplateBlock {
+  return {
+    id: task.id,
+    title: task.title,
+    categoryId: task.category,
+    start: task.startTime,
+    end: task.endTime,
+    priority: task.priority,
+    fixed: task.fixed ?? false,
+    movable: task.movable,
+    compensable: task.compensable ?? false,
+    core: task.core ?? false,
+    note: task.note,
+    muscle: task.muscle,
+    review: task.id === "weekly-review",
+  };
+}
+
+export function legacyWeekTemplate(
+  settings: AppSettings,
+  anchor: string = todayKey(),
+): WeekTemplate {
+  const template = {} as WeekTemplate;
+  for (let index = 0; index < 7; index += 1) {
+    const dateKey = nextWeekdayKey(anchor, index, true);
+    const schedule = buildLegacyDaySchedule(dateKey, settings, "early");
+    template[index as WeekdayIndex] = {
+      blocks: schedule.blocks.map(toTemplateBlock),
+    };
+  }
+  return template;
+}
+
+function templateTask(
+  block: TemplateBlock,
+  start: string,
+  end: string,
+): Task {
+  return {
+    id: block.id,
+    title: block.title,
+    category: block.categoryId,
+    startTime: start,
+    endTime: end,
+    duration: minutesBetween(start, end),
+    priority: block.priority,
+    recurring: true,
+    movable: block.movable,
+    core: block.core,
+    fixed: block.fixed,
+    compensable: block.compensable,
+    note: block.note,
+    muscle: block.muscle,
+  };
+}
+
+function recoveredFromTemplate(block: TemplateBlock, note: string): Task {
+  return {
+    id: block.id,
+    title: block.title,
+    category: block.categoryId,
+    startTime: "",
+    endTime: "",
+    duration: minutesBetween(block.start, block.end),
+    priority: block.priority,
+    recurring: true,
+    movable: true,
+    compensable: true,
+    core: block.core,
+    note,
+    muscle: block.muscle,
+  };
+}
+
+export function buildDaySchedule(
+  dateKey: string,
+  settings: AppSettingsV2,
+  preferredMode?: Mode,
+  template?: WeekTemplate,
+  categories?: readonly CategoryDef[],
+  overrides?: Record<string, BlockOverride>,
+): DaySchedule {
+  const mode = preferredMode ?? settings.defaultMode;
+  const index = weekdayIndexFromKey(dateKey) as WeekdayIndex;
+  const templateBlocks = template
+    ? (template[index]?.blocks ?? [])
+    : legacyWeekTemplate(settings)[index].blocks;
+  const shift =
+    mode === "late" ? Math.max(0, settings.lateShiftMinutes || 0) : 0;
+  const blocks: Task[] = [];
+  const recoverable: Task[] = [];
+
+  for (const block of templateBlocks) {
+    let start = block.start;
+    let end = block.end;
+    if (shift > 0 && block.movable && !block.fixed) {
+      const startRaw = timeToMinutes(block.start) + shift;
+      const endRaw = timeToMinutes(block.end) + shift;
+      if (endRaw > 24 * 60) {
+        if (block.compensable || block.core) {
+          recoverable.push(
+            recoveredFromTemplate(
+              block,
+              "با ریتم دیر جا نشد؛ برای جبران در روز سبک‌تر آماده است.",
+            ),
+          );
+        }
+        continue;
+      }
+      start = minutesToTime(startRaw);
+      end = minutesToTime(endRaw);
+    }
+    blocks.push(templateTask(block, start, end));
+  }
+
+  blocks.sort(
+    (a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime),
+  );
+
+  for (const [id, override] of Object.entries(overrides ?? {})) {
+    if (!override.skipped) continue;
+    const block = blocks.find((item) => item.id === id);
+    if (!block?.compensable) continue;
+    if (recoverable.some((item) => item.id === id)) continue;
+    recoverable.push(
+      recoveredFromTemplate(
+        {
+          ...toTemplateBlock(block),
+          start: block.startTime,
+          end: block.endTime,
+        },
+        "امروز سبک شد؛ جبرانش روی روز سبک‌تر می‌نشیند.",
+      ),
+    );
+  }
+
+  const bigTask =
+    blocks.find(
+      (block) => block.core && isGrowthCategory(block.category, categories),
+    ) ??
+    blocks.find((block) => block.core) ??
+    null;
+
+  return {
+    date: dateKey,
+    mode,
+    isWorkday: isWorkday(dateKey, settings),
+    blocks,
+    recoverable,
+    bigTaskId: bigTask?.id ?? null,
+  };
+}
+
 export interface ShiftChange {
   taskId: string;
   title: string;
@@ -725,12 +893,26 @@ export interface ShiftChange {
 
 export function buildShiftProposal(
   dateKey: string,
-  settings: AppSettings,
+  settings: AppSettingsV2,
   fromMode: Mode,
   toMode: Mode,
+  template?: WeekTemplate,
+  categories?: readonly CategoryDef[],
 ): { changes: ShiftChange[]; window: ReturnType<typeof getModeWindow> } {
-  const current = buildDaySchedule(dateKey, settings, fromMode);
-  const next = buildDaySchedule(dateKey, settings, toMode);
+  const current = buildDaySchedule(
+    dateKey,
+    settings,
+    fromMode,
+    template,
+    categories,
+  );
+  const next = buildDaySchedule(
+    dateKey,
+    settings,
+    toMode,
+    template,
+    categories,
+  );
   const currentMap = new Map(current.blocks.map((b) => [b.id, b]));
   const nextMap = new Map(next.blocks.map((b) => [b.id, b]));
   const changes: ShiftChange[] = [];
@@ -741,8 +923,7 @@ export function buildShiftProposal(
       if (
         block.core ||
         block.compensable ||
-        block.category === "language" ||
-        block.category === "programming"
+        isGrowthCategory(block.category, categories)
       ) {
         changes.push({
           taskId: block.id,
@@ -791,10 +972,10 @@ export function buildShiftProposal(
 
 export function skipCandidates(schedule: DaySchedule): Task[] {
   return schedule.blocks.filter(
-    (b) =>
-      !b.core &&
-      b.priority >= 2 &&
-      ["gym", "linkedin"].includes(b.category),
+    (block) =>
+      !block.core &&
+      block.priority >= 2 &&
+      block.compensable,
   );
 }
 

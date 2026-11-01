@@ -11,18 +11,24 @@ import { todayKey, toFa } from "./jalali";
 import { defaultWeekTemplate, migrateData } from "./migrate";
 import { suggestCompensationDate } from "./schedule";
 import { bootstrapStorage } from "./storage";
+import { ensurePresetCategories, presetWeekTemplate } from "./templates";
+import type { IconName } from "@/components/Icon";
 import type {
   AppDataV2,
   AppSettingsV2,
   Category,
+  CategoryDef,
+  CategoryTone,
   DayPlan,
   LinkedInIdea,
   Mode,
   Profile,
   Recovery,
   Task,
+  TemplateId,
   ThemeChoice,
   WeekReview,
+  WeekTemplate,
 } from "./types";
 
 function emptyPlan(date: string, mode: DayPlan["mode"]): DayPlan {
@@ -54,6 +60,23 @@ interface FocusLog {
   minutes: number;
 }
 
+export interface CategoryInput {
+  label: string;
+  short?: string;
+  icon?: IconName;
+  tone?: CategoryTone;
+  module?: CategoryDef["module"];
+  growth?: boolean;
+  rest?: boolean;
+}
+
+function nextCategoryId(categories: readonly CategoryDef[]): string {
+  const ids = new Set(categories.map((category) => category.id));
+  let index = 1;
+  while (ids.has(`custom-${index}`)) index += 1;
+  return `custom-${index}`;
+}
+
 interface StoreState extends AppDataV2 {
   seededLocally: boolean;
   toggleDone: (date: string, task: Task) => void;
@@ -71,6 +94,14 @@ interface StoreState extends AppDataV2 {
   removeIdea: (id: string) => void;
   updateSettings: (patch: Partial<AppSettingsV2>) => void;
   setTheme: (theme: ThemeChoice) => void;
+  addCategory: (input: CategoryInput) => string;
+  updateCategory: (
+    id: string,
+    patch: Partial<Omit<CategoryDef, "id" | "builtin">>,
+  ) => void;
+  removeCategory: (id: string, transferTo: string) => boolean;
+  updateWeekTemplate: (template: WeekTemplate) => void;
+  applyTemplate: (templateId: TemplateId) => void;
   initializeForUser: (data: AppDataV2) => void;
   replaceFromRemote: (data: AppDataV2) => boolean;
   saveProfile: (patch: Partial<Profile>) => void;
@@ -369,6 +400,86 @@ export const useAppStore = create<StoreState>()(
         const next = { ...get().settings, theme };
         set(stamp({ settings: next }));
         applyAppearance(next);
+      },
+
+      addCategory: (input) => {
+        const label = input.label.trim();
+        if (!label) return "";
+        const id = nextCategoryId(get().categories);
+        const category: CategoryDef = {
+          id,
+          label,
+          short: input.short?.trim() || label,
+          icon: input.icon ?? "pen",
+          tone: input.tone ?? "green",
+          builtin: false,
+          ...(input.module ? { module: input.module } : {}),
+          ...(input.growth ? { growth: true } : {}),
+          ...(input.rest ? { rest: true } : {}),
+        };
+        set((state) => stamp({ categories: [...state.categories, category] }));
+        return id;
+      },
+
+      updateCategory: (id, patch) =>
+        set((state) =>
+          stamp({
+            categories: state.categories.map((category) =>
+              category.id === id
+                ? { ...category, ...patch, id: category.id, builtin: category.builtin }
+                : category,
+            ),
+          }),
+        ),
+
+      removeCategory: (id, transferTo) => {
+        const state = get();
+        const category = state.categories.find((item) => item.id === id);
+        if (!category || category.builtin || id === transferTo) return false;
+        if (!state.categories.some((item) => item.id === transferTo)) return false;
+        const weekTemplate = Object.fromEntries(
+          Object.entries(state.weekTemplate).map(([day, entry]) => [
+            day,
+            {
+              blocks: entry.blocks.map((block) =>
+                block.categoryId === id
+                  ? { ...block, categoryId: transferTo }
+                  : block,
+              ),
+            },
+          ]),
+        ) as WeekTemplate;
+        set(
+          stamp({
+            categories: state.categories.filter((item) => item.id !== id),
+            weekTemplate,
+            recoveries: state.recoveries.map((recovery) =>
+              recovery.category === id
+                ? { ...recovery, category: transferTo }
+                : recovery,
+            ),
+          }),
+        );
+        return true;
+      },
+
+      updateWeekTemplate: (template) =>
+        set(stamp({ weekTemplate: template })),
+
+      applyTemplate: (templateId) => {
+        const state = get();
+        if (templateId === "custom") {
+          set(stamp({ settings: { ...state.settings, templateId } }));
+          return;
+        }
+        const settings: AppSettingsV2 = { ...state.settings, templateId };
+        set(
+          stamp({
+            settings,
+            categories: ensurePresetCategories(templateId, state.categories),
+            weekTemplate: presetWeekTemplate(templateId, settings),
+          }),
+        );
       },
 
       initializeForUser: (data) => {
