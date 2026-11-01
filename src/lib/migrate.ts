@@ -65,13 +65,14 @@ function normalizeSettings(raw: unknown): AppSettingsV2 {
         morning: raw.notifications.morning === true,
       };
     }
-    if (isRecord(raw.modules)) {
+    const modules = raw.modules;
+    if (isRecord(modules)) {
       out.modules = {
         ...DEFAULT_SETTINGS_V2.modules,
         ...Object.fromEntries(
           Object.keys(DEFAULT_SETTINGS_V2.modules).map((key) => [
             key,
-            raw.modules?.[key] !== false,
+            modules[key] !== false,
           ]),
         ),
       } as AppSettingsV2["modules"];
