@@ -77,6 +77,7 @@ export default function RootLayout({
     <html
       lang="fa"
       dir="rtl"
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
       className={`${vazirArabic.variable} ${vazirLatin.variable}`}
     >

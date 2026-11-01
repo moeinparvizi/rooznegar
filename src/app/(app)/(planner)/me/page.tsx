@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { AccountCard } from "@/components/account/AccountCard";
 import { Bloom } from "@/components/Bloom";
 import { Icon, type IconName } from "@/components/Icon";
+import { TimeField } from "@/components/settings/TimeField";
 import { canInstall, isStandalone, promptInstall, subscribeInstall } from "@/lib/pwa";
 import { formatDuration, formatTime, todayKey, toFa, WEEKDAYS } from "@/lib/jalali";
 import { useAppStore } from "@/lib/store";
@@ -62,69 +64,6 @@ function Stepper({
         >
           +
         </button>
-      </div>
-    </div>
-  );
-}
-
-const HOURS = Array.from({ length: 24 }, (_, index) =>
-  String(index).padStart(2, "0"),
-);
-const QUARTER_MINUTES = Array.from({ length: 12 }, (_, index) =>
-  String(index * 5).padStart(2, "0"),
-);
-
-function TimeField({
-  name,
-  label,
-  value,
-  onChange,
-}: {
-  name: string;
-  label: string;
-  value: string;
-  onChange: (next: string) => void;
-}) {
-  const [hour = "00", minute = "00"] = value.split(":");
-  const minutes = QUARTER_MINUTES.includes(minute)
-    ? QUARTER_MINUTES
-    : [...QUARTER_MINUTES, minute].sort();
-  return (
-    <div className="setting-field" role="group" aria-label={label}>
-      <span className="field-label">{label}</span>
-      <div className="time-picker">
-        <Icon name="clock" size={15} />
-        <select
-          id={`${name}-hour`}
-          name={`${name}-hour`}
-          className="time-select num"
-          aria-label={`ساعت ${label}`}
-          value={hour}
-          onChange={(event) => onChange(`${event.target.value}:${minute}`)}
-        >
-          {HOURS.map((item) => (
-            <option value={item} key={item}>
-              {toFa(item)}
-            </option>
-          ))}
-        </select>
-        <span className="time-colon" aria-hidden>
-          :
-        </span>
-        <select
-          id={`${name}-minute`}
-          name={`${name}-minute`}
-          className="time-select num"
-          aria-label={`دقیقه ${label}`}
-          value={minute}
-          onChange={(event) => onChange(`${hour}:${event.target.value}`)}
-        >
-          {minutes.map((item) => (
-            <option value={item} key={item}>
-              {toFa(item)}
-            </option>
-          ))}
-        </select>
       </div>
     </div>
   );
@@ -254,6 +193,8 @@ export default function MePage() {
           هر تغییر، همان لحظه روی همین دستگاه ذخیره می‌شود.
         </p>
       </header>
+
+      <AccountCard />
 
       <section
         className="surface mt-6 p-5 sm:p-6"
@@ -603,7 +544,7 @@ export default function MePage() {
         </div>
         <p className="mt-2 text-[11.5px] leading-6 text-muted">
           روزنگار آفلاین کار می‌کند؛ نصب، فقط یک آیکون تازه به خانه‌ات اضافه
-          می‌کند، نه یک حساب کاربری.
+          می‌کند. حساب و ورود جای خودشان هستند و به برنامه‌ی نصب‌شده هم می‌آیند.
         </p>
 
         {standalone ? (
@@ -652,8 +593,9 @@ export default function MePage() {
           </span>
         </div>
         <p className="mt-2 text-[11.5px] leading-6 text-muted">
-          هیچ داده‌ای از این دستگاه بیرون نمی‌رود. هر چند هفته یک نسخه‌ی
-          پشتیبان بگیر؛ فایل JSON را هر جا می‌توانی نگه داری.
+          داده‌های این حساب روی همین دستگاه می‌ماند تا آفلاین هم باز شود.
+          همگام‌سازی ابری در گام بعد اضافه می‌شود؛ تا آن روز هر چند هفته یک
+          نسخه‌ی پشتیبان بگیر.
         </p>
 
         <div className="data-grid mt-4">
@@ -772,7 +714,8 @@ export default function MePage() {
       <footer className="me-footer">
         <p>
           <Icon name="wifiOff" size={13} />
-          همه‌چیز روی همین دستگاه می‌ماند. بدون حساب، بدون سرور، بدون ردیابی.
+          داده‌ها به حساب واردشده روی همین دستگاه تعلق دارند. بدون ردیابی،
+          بدون فروش داده.
         </p>
         <p className="num">روزنگار · نسخه‌ی ۱٫۰</p>
       </footer>

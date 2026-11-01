@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/components/auth/AuthContext";
 import { useAppStore, useIsReady, useToday } from "@/lib/store";
 import { gardenFor, streakOf } from "@/lib/stats";
 import { toFa } from "@/lib/jalali";
@@ -245,6 +246,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePath();
   const ready = useIsReady();
   const today = useToday();
+  const { offline, status } = useAuth();
   const ensureDay = useAppStore((s) => s.ensureDay);
 
   useEffect(() => {
@@ -259,6 +261,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <SideRail />
       <div className="min-w-0">
         <MobileTopBar />
+        {offline && status === "signedIn" && (
+          <div className="offline-banner" role="status">
+            آفلاین؛ داده‌های همین دستگاه کار می‌کنند.
+          </div>
+        )}
         <main id="main-content" className="page-main">
           <div key={path} className="page-enter">
             {ready ? children : <LoadingScreen />}

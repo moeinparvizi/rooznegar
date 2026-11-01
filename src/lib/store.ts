@@ -431,6 +431,7 @@ export const useAppStore = create<StoreState>()(
     {
       name: STORAGE_KEY,
       version: 2,
+      skipHydration: true,
       storage: createJSONStorage(() => bootstrapStorage),
       partialize: (state) => ({
         schemaVersion: state.schemaVersion,
