@@ -69,6 +69,7 @@ export default function ProgressPage() {
   const today = useToday();
   const days = useAppStore((s) => s.days);
   const settings = useAppStore((s) => s.settings);
+  const modules = settings.modules;
   const categories = useAppStore((s) => s.categories);
   const weekTemplate = useAppStore((s) => s.weekTemplate);
   const baselineLangHours = useAppStore((s) => s.baselineLangHours);
@@ -175,14 +176,17 @@ export default function ProgressPage() {
               </span>
             </h1>
           </div>
-          <div className="day-stamp" aria-hidden>
-            <Bloom variant={1} size={16} bare />
-            <span className="day-stamp-num">{toFa(monthBlooms)}</span>
-            <span className="day-stamp-label">گل در ۲۸ روز</span>
-          </div>
+          {modules.garden && (
+            <div className="day-stamp" aria-hidden>
+              <Bloom variant={1} size={16} bare />
+              <span className="day-stamp-num">{toFa(monthBlooms)}</span>
+              <span className="day-stamp-label">گل در ۲۸ روز</span>
+            </div>
+          )}
         </div>
       </header>
 
+      {modules.cefr && (
       <section className="surface mt-6 p-5 sm:p-6" aria-labelledby="cefr-heading">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -277,14 +281,16 @@ export default function ProgressPage() {
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn btn-soft btn-sm"
-            onClick={() => openFocus("language", 25)}
-          >
-            <Icon name="play" size={14} />
-            تمرین ۲۵ دقیقه‌ای
-          </button>
+          {modules.focus && (
+            <button
+              type="button"
+              className="btn btn-soft btn-sm"
+              onClick={() => openFocus("language", 25)}
+            >
+              <Icon name="play" size={14} />
+              تمرین ۲۵ دقیقه‌ای
+            </button>
+          )}
           <Link href="/me/" className="btn btn-outline btn-sm">
             <Icon name="target" size={14} />
             تنظیم هدف
@@ -312,8 +318,10 @@ export default function ProgressPage() {
           />
         </div>
       </section>
+      )}
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
+        {modules.focus && (
         <section className="surface p-5" aria-labelledby="focus-heading">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -366,7 +374,9 @@ export default function ProgressPage() {
             </button>
           </div>
         </section>
+        )}
 
+        {modules.gym && (
         <section className="surface p-5" aria-labelledby="gym-heading">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -437,8 +447,10 @@ export default function ProgressPage() {
             </div>
           </div>
         </section>
+        )}
       </div>
 
+      {modules.linkedin && (
       <section className="surface mt-5 p-5" aria-labelledby="linkedin-heading">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -620,7 +632,9 @@ export default function ProgressPage() {
           </div>
         </div>
       </section>
+      )}
 
+      {modules.garden && (
       <section className="surface mt-5 p-5" aria-labelledby="garden-heading">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -678,6 +692,7 @@ export default function ProgressPage() {
           </Link>
         </div>
       </section>
+      )}
     </div>
   );
 }

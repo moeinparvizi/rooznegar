@@ -48,6 +48,7 @@ export default function WeekPage() {
   const today = useToday();
   const days = useAppStore((s) => s.days);
   const settings = useAppStore((s) => s.settings);
+  const modules = settings.modules;
   const categories = useAppStore((s) => s.categories);
   const weekTemplate = useAppStore((s) => s.weekTemplate);
   const reviews = useAppStore((s) => s.reviews);
@@ -126,15 +127,21 @@ export default function WeekPage() {
               هفته‌ی جاری
             </p>
             <h1 className="hero-title">
-              هفت روز، یک باغ.
-              <span className="hero-sub">{mood}</span>
+              {modules.garden ? "هفت روز، یک باغ." : "هفت روز، یک ریتم."}
+              <span className="hero-sub">
+                {modules.garden
+                  ? mood
+                  : "خانه‌ها وضعیت بلوک‌ها را نشان می‌دهند؛ بدون قضاوت."}
+              </span>
             </h1>
           </div>
-          <div className="day-stamp" aria-hidden>
-            <Bloom variant={3} size={16} bare />
-            <span className="day-stamp-num">{toFa(summary.blooms)}</span>
-            <span className="day-stamp-label">روز سبز</span>
-          </div>
+          {modules.garden && (
+            <div className="day-stamp" aria-hidden>
+              <Bloom variant={3} size={16} bare />
+              <span className="day-stamp-num">{toFa(summary.blooms)}</span>
+              <span className="day-stamp-label">روز سبز</span>
+            </div>
+          )}
         </div>
       </header>
 
@@ -149,35 +156,41 @@ export default function WeekPage() {
             هدف {toFa(summary.langTarget)} دقیقه
           </span>
         </div>
-        <div className="metric">
-          <span className="metric-label">تمرکز عمیق</span>
-          <strong className="metric-value">
-            {toFa(Math.round((summary.deepMinutes / 60) * 10) / 10)}
-            <span> ساعت</span>
-          </strong>
-          <span className="metric-sub">
-            {toFa(summary.focusBlocks)} بلوک تمرکز
-          </span>
-        </div>
-        <div className="metric">
-          <span className="metric-label">باشگاه</span>
-          <strong className="metric-value">
-            {toFa(summary.gymCount)}
-            <span> از {toFa(settings.gymPerWeek)}</span>
-          </strong>
-          <span className="metric-sub">جلسه‌ی این هفته</span>
-        </div>
-        <div className="metric">
-          <span className="metric-label">لینکدین</span>
-          <strong className="metric-value">
-            {toFa(summary.linkedinPosts)}
-            <span> پست</span>
-          </strong>
-          <span className="metric-sub">
-            {toFa(summary.linkedinComments)} کامنت · هدف{" "}
-            {toFa(settings.weeklyLinkedinPosts)} پست
-          </span>
-        </div>
+        {modules.focus && (
+          <div className="metric">
+            <span className="metric-label">تمرکز عمیق</span>
+            <strong className="metric-value">
+              {toFa(Math.round((summary.deepMinutes / 60) * 10) / 10)}
+              <span> ساعت</span>
+            </strong>
+            <span className="metric-sub">
+              {toFa(summary.focusBlocks)} بلوک تمرکز
+            </span>
+          </div>
+        )}
+        {modules.gym && (
+          <div className="metric">
+            <span className="metric-label">باشگاه</span>
+            <strong className="metric-value">
+              {toFa(summary.gymCount)}
+              <span> از {toFa(settings.gymPerWeek)}</span>
+            </strong>
+            <span className="metric-sub">جلسه‌ی این هفته</span>
+          </div>
+        )}
+        {modules.linkedin && (
+          <div className="metric">
+            <span className="metric-label">لینکدین</span>
+            <strong className="metric-value">
+              {toFa(summary.linkedinPosts)}
+              <span> پست</span>
+            </strong>
+            <span className="metric-sub">
+              {toFa(summary.linkedinComments)} کامنت · هدف{" "}
+              {toFa(settings.weeklyLinkedinPosts)} پست
+            </span>
+          </div>
+        )}
       </div>
 
       <section className="surface mt-5 p-4 sm:p-6" aria-labelledby="heatmap-heading">
@@ -220,7 +233,7 @@ export default function WeekPage() {
                 >
                   <span className="heat-day-name">{day.weekday}</span>
                   <span className="heat-day-date">{day.dateLabel}</span>
-                  {day.bloom && (
+                  {modules.garden && day.bloom && (
                     <Bloom
                       variant={(weekdayIndexFromKey(day.key) + 2) % 5}
                       size={11}
@@ -307,7 +320,9 @@ export default function WeekPage() {
                   ریتم {selectedDay.plan.mode === "late" ? "دیر" : "زود"}
                 </span>
               )}
-              {selectedDay?.bloom && <Bloom variant={1} size={17} bare />}
+              {modules.garden && selectedDay?.bloom && (
+                <Bloom variant={1} size={17} bare />
+              )}
             </div>
           </div>
 
@@ -384,6 +399,7 @@ export default function WeekPage() {
         </section>
 
         <div className="flex flex-col gap-5">
+          {modules.review && (
           <section className="review-cta" aria-labelledby="review-heading">
             <span className="review-cta-mark" aria-hidden>
               <Bloom variant={4} size={26} bare />
@@ -422,6 +438,7 @@ export default function WeekPage() {
               </p>
             )}
           </section>
+          )}
 
           <section className="surface p-5" aria-labelledby="recoveries-heading">
             <p className="eyebrow">

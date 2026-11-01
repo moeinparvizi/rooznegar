@@ -56,6 +56,7 @@ export function NotificationsManager() {
 
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (!settings.modules.notifications) return;
     const notifications = settings.notifications;
     if (!notifications.blockStart && !notifications.zeroRule && !notifications.morning) {
       return;

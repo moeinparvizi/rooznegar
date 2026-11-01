@@ -8,10 +8,18 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import { TimeField } from "@/components/settings/TimeField";
 import { safeNext } from "@/lib/auth/safe-next";
 import { formatTimeRange, timeToMinutes, toFa, WEEKDAYS } from "@/lib/jalali";
-import { defaultWeekTemplate, migrateData } from "@/lib/migrate";
+import { migrateData } from "@/lib/migrate";
+import { ACCENTS, PALETTES } from "@/lib/palettes";
 import { readLegacyData } from "@/lib/storage";
-import { applyThemeChoice, useAppStore } from "@/lib/store";
-import type { AppDataV2, ThemeChoice } from "@/lib/types";
+import { useAppStore } from "@/lib/store";
+import { ensurePresetCategories, presetWeekTemplate, TEMPLATE_PRESETS } from "@/lib/templates";
+import type {
+  AccentId,
+  AppDataV2,
+  PaletteId,
+  TemplateId,
+  ThemeChoice,
+} from "@/lib/types";
 
 const AVATARS = ["🌱", "☕️", "📚", "🏋️", "✂️", "💻", "🎯", "🌿"];
 
@@ -28,9 +36,7 @@ function OnboardingForm() {
   const [initial] = useState(() => useAppStore.getState());
   const saveProfile = useAppStore((state) => state.saveProfile);
   const updateSettings = useAppStore((state) => state.updateSettings);
-  const regenerateWeekTemplate = useAppStore(
-    (state) => state.regenerateWeekTemplate,
-  );
+  const applyTemplate = useAppStore((state) => state.applyTemplate);
   const initializeForUser = useAppStore((state) => state.initializeForUser);
 
   const [step, setStep] = useState(0);
@@ -42,6 +48,11 @@ function OnboardingForm() {
   const [workEnd, setWorkEnd] = useState(initial.settings.workEnd);
   const [workdays, setWorkdays] = useState<number[]>(initial.settings.workdays);
   const [theme, setTheme] = useState<ThemeChoice>(initial.settings.theme);
+  const [profession, setProfession] = useState<TemplateId>(
+    initial.settings.templateId,
+  );
+  const [palette, setPalette] = useState<PaletteId>(initial.settings.palette);
+  const [accent, setAccent] = useState<AccentId>(initial.settings.accent);
   const [legacy, setLegacy] = useState<AppDataV2 | null>(null);
   const [legacyChecked, setLegacyChecked] = useState(false);
   const [imported, setImported] = useState<AppDataV2 | null>(null);
@@ -80,7 +91,14 @@ function OnboardingForm() {
     setWorkEnd(legacy.settings.workEnd);
     setWorkdays(legacy.settings.workdays);
     setTheme(legacy.settings.theme);
-    applyThemeChoice(legacy.settings.theme);
+    setProfession(legacy.settings.templateId);
+    setPalette(legacy.settings.palette);
+    setAccent(legacy.settings.accent);
+    updateSettings({
+      theme: legacy.settings.theme,
+      palette: legacy.settings.palette,
+      accent: legacy.settings.accent,
+    });
     setError(null);
   };
 
@@ -106,7 +124,7 @@ function OnboardingForm() {
       }
       return true;
     }
-    if (step === 1) {
+    if (step === 2) {
       if (timeToMinutes(workEnd) <= timeToMinutes(workStart)) {
         setError("ساعت پایان کار باید بعد از شروع کار باشد.");
         return false;
@@ -123,7 +141,7 @@ function OnboardingForm() {
   const next = () => {
     if (!validateStep()) return;
     setError(null);
-    setStep((value) => Math.min(2, value + 1));
+    setStep((value) => Math.min(3, value + 1));
   };
 
   const back = () => {
@@ -133,11 +151,20 @@ function OnboardingForm() {
 
   const chooseTheme = (nextTheme: ThemeChoice) => {
     setTheme(nextTheme);
-    applyThemeChoice(nextTheme);
+    updateSettings({ theme: nextTheme });
   };
 
-  const finish = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const choosePalette = (nextPalette: PaletteId) => {
+    setPalette(nextPalette);
+    updateSettings({ palette: nextPalette });
+  };
+
+  const chooseAccent = (nextAccent: AccentId) => {
+    setAccent(nextAccent);
+    updateSettings({ accent: nextAccent });
+  };
+
+  const complete = () => {
     if (!validateStep()) return;
 
     const cleanName = name.trim();
@@ -149,6 +176,9 @@ function OnboardingForm() {
       workEnd,
       workdays,
       theme,
+      palette,
+      accent,
+      templateId: profession,
     };
 
     if (imported) {
@@ -158,13 +188,20 @@ function OnboardingForm() {
         imported.settings.workStart !== workStart ||
         imported.settings.workEnd !== workEnd ||
         imported.settings.workdays.join(",") !== workdays.join(",");
+      const templateChanged = imported.settings.templateId !== profession;
+      const rebuildTemplate =
+        profession !== "custom" && (templateChanged || rhythmChanged);
       initializeForUser({
         ...imported,
         profile: { name: cleanName, avatarEmoji: avatar },
         settings: finalSettings,
-        weekTemplate: rhythmChanged
-          ? defaultWeekTemplate(finalSettings)
+        weekTemplate: rebuildTemplate
+          ? presetWeekTemplate(profession, finalSettings)
           : imported.weekTemplate,
+        categories:
+          templateChanged && profession !== "custom"
+            ? ensurePresetCategories(profession, imported.categories)
+            : imported.categories,
       });
     } else {
       saveProfile({ name: cleanName, avatarEmoji: avatar });
@@ -175,18 +212,31 @@ function OnboardingForm() {
         workEnd,
         workdays,
         theme,
+        palette,
+        accent,
+        templateId: profession,
       });
-      regenerateWeekTemplate();
+      applyTemplate(profession);
     }
 
     router.replace(safeNext(nextParam));
   };
 
+  const finish = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    complete();
+  };
+
   const stepTitles = [
     "اسمت را بنویس.",
+    "با چه الگویی شروع کنیم؟",
     "روزت چطور می‌گذرد؟",
     "با چه نوری شروع کنیم؟",
   ];
+
+  const professionLabel =
+    TEMPLATE_PRESETS.find((preset) => preset.id === profession)?.label ??
+    "قالب دستی";
 
   return (
     <div className="onboarding-shell">
@@ -197,7 +247,7 @@ function OnboardingForm() {
           </span>
           <BrandWord />
           <span className="auth-hint">
-            سه قدم کوتاه تا باغِ روزهای خودت.
+            چهار قدم کوتاه تا باغِ روزهای خودت.
           </span>
         </div>
 
@@ -205,11 +255,11 @@ function OnboardingForm() {
           className="onboarding-steps"
           role="progressbar"
           aria-valuemin={1}
-          aria-valuemax={3}
+          aria-valuemax={4}
           aria-valuenow={step + 1}
-          aria-label={`گام ${toFa(step + 1)} از ${toFa(3)}`}
+          aria-label={`گام ${toFa(step + 1)} از ${toFa(4)}`}
         >
-          {[0, 1, 2].map((index) => (
+          {[0, 1, 2, 3].map((index) => (
             <span
               key={index}
               className="onboarding-step-dot"
@@ -219,7 +269,7 @@ function OnboardingForm() {
         </div>
 
         <p className="eyebrow mt-4">
-          گام {toFa(step + 1)} از {toFa(3)}
+          گام {toFa(step + 1)} از {toFa(4)}
         </p>
         <h1 className="mt-1 text-[24px] font-bold leading-tight">
           {stepTitles[step]}
@@ -307,6 +357,57 @@ function OnboardingForm() {
           {step === 1 && (
             <>
               <p className="auth-hint">
+                یک الگوی آماده انتخاب کن؛ بعد از این، هر بلوکی را می‌توانی از
+                ویرایشگر قالب عوض کنی.
+              </p>
+              {profession === "custom" && (
+                <div className="onboarding-import mt-4" role="note">
+                  <span className="onboarding-import-icon">
+                    <Icon name="pen" size={17} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <strong className="block text-[12px]">
+                      قالب دستی فعلی‌ات حفظ می‌شود
+                    </strong>
+                    <small className="mt-1 block text-[10.5px] leading-5 text-muted">
+                      اگر یکی از الگوها را انتخاب کنی، جای برنامه‌ی فعلی را
+                      می‌گیرد.
+                    </small>
+                  </div>
+                </div>
+              )}
+              <div className="preset-grid mt-4" role="radiogroup" aria-label="الگوی حرفه">
+                {TEMPLATE_PRESETS.map((preset) => {
+                  const active = profession === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      className="preset-card"
+                      data-active={active}
+                      onClick={() => setProfession(preset.id)}
+                    >
+                      <span className="flex items-center justify-between gap-2">
+                        <strong>{preset.label}</strong>
+                        {active && (
+                          <span className="palette-check" aria-hidden>
+                            <Icon name="check" size={10} />
+                          </span>
+                        )}
+                      </span>
+                      <small>{preset.description}</small>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <p className="auth-hint">
                 برنامه‌ی هر روز با همین ساعت‌ها ساخته می‌شود. بعداً هم می‌توانی
                 از صفحه‌ی «من» عوضشان کنی.
               </p>
@@ -368,7 +469,7 @@ function OnboardingForm() {
             </>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <>
               <p className="auth-hint">
                 رنگ‌ها از باغ گرفته شده‌اند. هر وقت خواستی عوضشان کن؛ هیچ
@@ -399,14 +500,76 @@ function OnboardingForm() {
                 })}
               </div>
 
+              <div className="mt-5">
+                <p className="field-label">پالت</p>
+                <div className="palette-grid mt-2" role="radiogroup" aria-label="پالت رنگ">
+                  {PALETTES.map((item) => {
+                    const active = palette === item.id;
+                    const [lightPaper, , lightAccent, lightInk] = item.light;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        className="palette-card"
+                        data-active={active}
+                        onClick={() => choosePalette(item.id)}
+                      >
+                        <span className="palette-strip" aria-hidden>
+                          <span style={{ background: lightPaper }} />
+                          <span style={{ background: lightAccent }} />
+                          <span style={{ background: lightInk }} />
+                        </span>
+                        <strong>{item.label}</strong>
+                        {active && (
+                          <span className="palette-check" aria-hidden>
+                            <Icon name="check" size={10} />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <p className="field-label">رنگ تاکیدی</p>
+                <div className="accent-row mt-2" role="radiogroup" aria-label="رنگ تاکیدی">
+                  {ACCENTS.map((item) => {
+                    const active = accent === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        className="accent-chip"
+                        data-active={active}
+                        onClick={() => chooseAccent(item.id)}
+                      >
+                        <span
+                          className="accent-dot"
+                          style={{
+                            background: `linear-gradient(135deg, ${item.light} 50%, ${item.dark} 50%)`,
+                          }}
+                          aria-hidden
+                        />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="onboarding-summary mt-5">
                 <p>
                   <span>{avatar}</span>
                   <b>{name.trim()}</b>
                 </p>
                 <p className="text-[10.5px] leading-6 text-muted">
-                  {toFa(workdays.length)} روز کاری · {formatTimeRange(workStart, workEnd)}{" "}
-                  · بیدار شدن {toFa(wakeTime)}
+                  {professionLabel} · {toFa(workdays.length)} روز کاری ·{" "}
+                  {formatTimeRange(workStart, workEnd)} · بیدار شدن {toFa(wakeTime)}
                 </p>
               </div>
             </>
@@ -419,12 +582,17 @@ function OnboardingForm() {
           )}
 
           <div className="onboarding-actions">
+            {step === 2 && (
+              <button type="button" className="auth-link" onClick={complete}>
+                رد کردن بقیه
+              </button>
+            )}
             {step > 0 && (
               <button type="button" className="btn btn-outline" onClick={back}>
                 قبلی
               </button>
             )}
-            {step < 2 ? (
+            {step < 3 ? (
               <button type="button" className="btn btn-primary" onClick={next}>
                 بعدی
               </button>

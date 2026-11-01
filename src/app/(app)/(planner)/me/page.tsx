@@ -10,12 +10,95 @@ import { canInstall, isStandalone, promptInstall, subscribeInstall } from "@/lib
 import { formatDuration, formatTime, todayKey, toFa, WEEKDAYS } from "@/lib/jalali";
 import { useAppStore } from "@/lib/store";
 import { useUIStore } from "@/lib/ui-store";
-import type { NotificationSettings, ThemeChoice } from "@/lib/types";
+import type {
+  GardenRule,
+  ModuleId,
+  NotificationSettings,
+  ThemeChoice,
+} from "@/lib/types";
 
 const THEMES: { value: ThemeChoice; label: string; icon: IconName; hint: string }[] = [
   { value: "light", label: "روشن", icon: "sun", hint: "کاغذ و باغ" },
   { value: "dark", label: "تاریک", icon: "moon", hint: "شبِ آرام" },
   { value: "system", label: "هم‌راه دستگاه", icon: "monitor", hint: "خودکار" },
+];
+
+const MODULES: {
+  id: ModuleId;
+  label: string;
+  hint: string;
+  icon: IconName;
+}[] = [
+  {
+    id: "garden",
+    label: "باغ روزها",
+    hint: "نوار باغ، گل‌های هفتگی و شمارنده‌ی روزهای سبز.",
+    icon: "leaf",
+  },
+  {
+    id: "journal",
+    label: "ژورنال یک‌خطی",
+    hint: "کادر یک خط آخر روز؛ ساده‌ترین راه سبز شدن.",
+    icon: "feather",
+  },
+  {
+    id: "focus",
+    label: "تمرکز عمیق",
+    hint: "تایمر تمرکز و کارت‌های بلوک‌های عمیق.",
+    icon: "target",
+  },
+  {
+    id: "cefr",
+    label: "مسیر زبان (CEFR)",
+    hint: "نوار سطح، پیش‌بینی و ساعت‌های تجمعی زبان.",
+    icon: "book",
+  },
+  {
+    id: "linkedin",
+    label: "لینکدین",
+    hint: "هدف پست و کامنت، ایده‌ها و تقویم محتوا.",
+    icon: "linkedin",
+  },
+  {
+    id: "gym",
+    label: "باشگاه",
+    hint: "روزهای باشگاه، چرخه‌ی عضله و هدف جلسه‌ها.",
+    icon: "dumbbell",
+  },
+  {
+    id: "review",
+    label: "بازبینی هفته",
+    hint: "پنج سؤال پایان هفته و یادداشت هفته‌ی قبل.",
+    icon: "calendar",
+  },
+  {
+    id: "notifications",
+    label: "یادآورها",
+    hint: "سه یادآور محلی؛ بدون سرور و بدون تبلیغ.",
+    icon: "bell",
+  },
+];
+
+const GARDEN_RULES: {
+  value: GardenRule;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    value: "one",
+    label: "یک قدم",
+    hint: "یک بلوک انجام‌شده یا یک خط ژورنال.",
+  },
+  {
+    value: "half",
+    label: "نیمه‌ی روز",
+    hint: "حداقل نیمی از بلوک‌های غیراستراحت.",
+  },
+  {
+    value: "core",
+    label: "کار بزرگ",
+    hint: "فقط بلوک اصلی روز.",
+  },
 ];
 
 function Stepper({
@@ -108,6 +191,17 @@ export default function MePage() {
       gymDays: nextDays,
       gymPerWeek: nextDays.length,
     });
+  };
+
+  const toggleModule = (id: ModuleId) => {
+    updateSettings({
+      modules: { ...settings.modules, [id]: !settings.modules[id] },
+    });
+    showToast(
+      settings.modules[id]
+        ? "ماژول کنار رفت؛ داده‌هایش دست‌نخورده ماند."
+        : "ماژول برگشت؛ همان لحظه در صفحه‌ها دیده می‌شود.",
+    );
   };
 
   const toggleNotification = async (key: keyof NotificationSettings) => {
@@ -266,6 +360,98 @@ export default function MePage() {
 
       <section
         className="surface mt-6 p-5 sm:p-6"
+        aria-labelledby="modules-heading"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="eyebrow">
+              <Icon name="list" size={13} />
+              ماژول‌ها
+            </p>
+            <h2 id="modules-heading" className="mt-1 text-[18px] font-bold">
+              فقط چیزی بماند که به کارت می‌آید
+            </h2>
+          </div>
+          <span className="chip" data-active="true">
+            {toFa(Object.values(settings.modules).filter(Boolean).length)} از{" "}
+            {toFa(MODULES.length)} روشن
+          </span>
+        </div>
+        <p className="mt-2 text-[11.5px] leading-6 text-muted">
+          هر ماژول را که خاموش کنی، صفحه‌هایش کنار می‌روند؛ داده‌های قبلی پاک
+          نمی‌شوند و هر وقت بخواهی برمی‌گردند.
+        </p>
+        <div className="switch-list mt-4">
+          {MODULES.map((module) => {
+            const enabled = settings.modules[module.id];
+            return (
+              <button
+                key={module.id}
+                type="button"
+                className="switch-row"
+                role="switch"
+                aria-checked={enabled}
+                onClick={() => toggleModule(module.id)}
+              >
+                <span className="switch-copy">
+                  <strong className="inline-flex items-center gap-2">
+                    <Icon name={module.icon} size={14} />
+                    {module.label}
+                  </strong>
+                  <small>{module.hint}</small>
+                </span>
+                <span className="switch" data-on={enabled} aria-hidden>
+                  <span className="switch-knob" />
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {settings.modules.garden && (
+          <div className="mt-6 border-t pt-5" style={{ borderColor: "var(--line)" }}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="field-label mb-0">قانون باغ</p>
+                <p className="mt-1 text-[10.5px] leading-6 text-muted">
+                  چه روزی «گل» حساب شود؟ این انتخاب، شمارنده‌ی روزهای سبز را
+                  عوض می‌کند.
+                </p>
+              </div>
+              <span className="chip" data-active="true">
+                {GARDEN_RULES.find((rule) => rule.value === settings.gardenRule)?.label}
+              </span>
+            </div>
+            <div className="mode-options mt-4" role="radiogroup" aria-label="قانون باغ">
+              {GARDEN_RULES.map((rule) => {
+                const active = settings.gardenRule === rule.value;
+                return (
+                  <button
+                    key={rule.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    className="mode-option"
+                    data-active={active}
+                    onClick={() => updateSettings({ gardenRule: rule.value })}
+                  >
+                    <span className="mode-icon">
+                      <Bloom variant={2} size={16} bare />
+                    </span>
+                    <span>
+                      <strong>{rule.label}</strong>
+                      <small>{rule.hint}</small>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section
+        className="surface mt-6 p-5 sm:p-6"
         aria-labelledby="rhythm-heading"
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -312,12 +498,14 @@ export default function MePage() {
             value={settings.workEnd}
             onChange={(workEnd) => updateSettings({ workEnd })}
           />
-          <TimeField
-            name="gym-start"
-            label="شروع باشگاه"
-            value={settings.gymStart}
-            onChange={(gymStart) => updateSettings({ gymStart })}
-          />
+          {settings.modules.gym && (
+            <TimeField
+              name="gym-start"
+              label="شروع باشگاه"
+              value={settings.gymStart}
+              onChange={(gymStart) => updateSettings({ gymStart })}
+            />
+          )}
         </div>
 
         <div className="mt-4">
@@ -332,35 +520,37 @@ export default function MePage() {
           />
         </div>
 
-        <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--line)" }}>
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="field-label mb-0">روزهای باشگاه</p>
-            <span className="text-[10px] text-faint">
-              {toFa(settings.gymDays.length)} جلسه در هفته
-            </span>
+        {settings.modules.gym && (
+          <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--line)" }}>
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="field-label mb-0">روزهای باشگاه</p>
+              <span className="text-[10px] text-faint">
+                {toFa(settings.gymDays.length)} جلسه در هفته
+              </span>
+            </div>
+            <div className="day-toggle-row mt-2" role="group" aria-label="روزهای باشگاه">
+              {WEEKDAYS.map((day, index) => {
+                const active = settings.gymDays.includes(index);
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    className="day-toggle"
+                    data-active={active}
+                    aria-pressed={active}
+                    onClick={() => toggleGymDay(index)}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-[10px] leading-5 text-faint">
+              روز خالی، حذف نمی‌شود؛ فقط سبک‌تر می‌شود. جبران، پنجشنبه پیشنهاد
+              می‌شود.
+            </p>
           </div>
-          <div className="day-toggle-row mt-2" role="group" aria-label="روزهای باشگاه">
-            {WEEKDAYS.map((day, index) => {
-              const active = settings.gymDays.includes(index);
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  className="day-toggle"
-                  data-active={active}
-                  aria-pressed={active}
-                  onClick={() => toggleGymDay(index)}
-                >
-                  {day}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-2 text-[10px] leading-5 text-faint">
-            روز خالی، حذف نمی‌شود؛ فقط سبک‌تر می‌شود. جبران، پنجشنبه پیشنهاد
-            می‌شود.
-          </p>
-        </div>
+        )}
       </section>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
@@ -502,35 +692,38 @@ export default function MePage() {
           </div>
         </div>
 
-        <div className="target-steppers mt-5">
-          <Stepper
-            label="پست لینکدین"
-            value={settings.weeklyLinkedinPosts}
-            min={1}
-            max={5}
-            step={1}
-            suffix="پست"
-            onChange={(weeklyLinkedinPosts) =>
-              updateSettings({ weeklyLinkedinPosts })
-            }
-          />
-          <Stepper
-            label="کامنت لینکدین"
-            value={settings.weeklyLinkedinComments}
-            min={2}
-            max={15}
-            step={1}
-            suffix="کامنت"
-            onChange={(weeklyLinkedinComments) =>
-              updateSettings({ weeklyLinkedinComments })
-            }
-          />
-        </div>
+        {settings.modules.linkedin && (
+          <div className="target-steppers mt-5">
+            <Stepper
+              label="پست لینکدین"
+              value={settings.weeklyLinkedinPosts}
+              min={1}
+              max={5}
+              step={1}
+              suffix="پست"
+              onChange={(weeklyLinkedinPosts) =>
+                updateSettings({ weeklyLinkedinPosts })
+              }
+            />
+            <Stepper
+              label="کامنت لینکدین"
+              value={settings.weeklyLinkedinComments}
+              min={2}
+              max={15}
+              step={1}
+              suffix="کامنت"
+              onChange={(weeklyLinkedinComments) =>
+                updateSettings({ weeklyLinkedinComments })
+              }
+            />
+          </div>
+        )}
         <p className="mt-3 text-[10px] leading-5 text-faint">
           هدف زبان هرگز به صفر نمی‌رسد؛ کوتاه‌ترین نسخه، یک بلوک ۲۵ دقیقه‌ای است.
         </p>
       </section>
 
+      {settings.modules.notifications && (
       <section className="surface mt-5 p-5" aria-labelledby="notify-heading">
         <p className="eyebrow">
           <Icon name="bell" size={13} />
@@ -595,6 +788,7 @@ export default function MePage() {
           می‌تواند برای صرفه‌جویی در باتری، آن‌ها را کمی جابه‌جا کند.
         </p>
       </section>
+      )}
 
       <section className="surface mt-5 p-5" aria-labelledby="install-heading">
         <div className="flex flex-wrap items-start justify-between gap-3">

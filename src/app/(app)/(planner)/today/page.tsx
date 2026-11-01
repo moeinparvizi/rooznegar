@@ -85,6 +85,8 @@ function Timeline({
   onOpenFocus,
   onOpenCommute,
   onJournal,
+  focusEnabled,
+  journalEnabled,
 }: {
   schedule: DaySchedule;
   plan: DayPlan | undefined;
@@ -94,6 +96,8 @@ function Timeline({
   onOpenFocus: (category: Category | "free") => void;
   onOpenCommute: () => void;
   onJournal: () => void;
+  focusEnabled: boolean;
+  journalEnabled: boolean;
 }) {
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const overrides = plan?.overrides ?? {};
@@ -119,13 +123,13 @@ function Timeline({
     if (state === "current") {
       if (block.category === "commute") {
         action = { label: "حالت مسیر", icon: "headphones", run: onOpenCommute };
-      } else if (isGrowthCategory(block.category, categories)) {
+      } else if (focusEnabled && isGrowthCategory(block.category, categories)) {
         action = {
           label: "تمرکز",
           icon: "target",
           run: () => onOpenFocus(block.category),
         };
-      } else if (block.id === "journal") {
+      } else if (journalEnabled && block.id === "journal") {
         action = { label: "یک خط بنویس", icon: "pen", run: onJournal };
       }
     }
@@ -265,6 +269,7 @@ export default function TodayPage() {
   const now = useNow(30_000);
   const days = useAppStore((s) => s.days);
   const settings = useAppStore((s) => s.settings);
+  const modules = settings.modules;
   const categories = useAppStore((s) => s.categories);
   const weekTemplate = useAppStore((s) => s.weekTemplate);
   const recoveries = useAppStore((s) => s.recoveries);
@@ -417,7 +422,9 @@ export default function TodayPage() {
   const nowAction =
     current && current.category === "commute"
       ? { label: "حالت مسیر", run: openCommute }
-      : current && isGrowthCategory(current.category, categories)
+      : modules.focus &&
+          current &&
+          isGrowthCategory(current.category, categories)
         ? {
             label: "تمرکز",
             run: () => openFocus(current.category),
@@ -497,14 +504,16 @@ export default function TodayPage() {
                   />
                 </div>
                 <div className="hero-task-actions">
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={() => openFocus(bigTask.category)}
-                  >
-                    <Icon name="play" size={15} />
-                    {bigDone ? "یک نوبت دیگر" : "شروع تمرکز"}
-                  </button>
+                  {modules.focus && (
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => openFocus(bigTask.category)}
+                    >
+                      <Icon name="play" size={15} />
+                      {bigDone ? "یک نوبت دیگر" : "شروع تمرکز"}
+                    </button>
+                  )}
                   <button
                     type="button"
                     className={`btn ${bigDone ? "btn-soft" : "btn-outline"}`}
@@ -616,6 +625,8 @@ export default function TodayPage() {
               onOpenFocus={openFocus}
               onOpenCommute={openCommute}
               onJournal={jumpToJournal}
+              focusEnabled={modules.focus}
+              journalEnabled={modules.journal}
             />
 
             <p className="mt-5 flex items-start gap-2 pr-[86px] text-[11px] leading-6 text-faint max-[420px]:pr-[71px]">
@@ -625,6 +636,7 @@ export default function TodayPage() {
             </p>
           </section>
 
+          {modules.journal && (
           <section id="journal" aria-labelledby="journal-heading" className="mt-9">
             <div className="surface journal-card">
               <div className="flex items-start justify-between gap-4">
@@ -637,6 +649,7 @@ export default function TodayPage() {
                     {journalPrompt}
                   </h2>
                 </div>
+                {modules.garden && (
                 <div className="journal-garden" aria-hidden>
                   {garden.map((day) => (
                     <span
@@ -651,6 +664,7 @@ export default function TodayPage() {
                     </span>
                   ))}
                 </div>
+                )}
               </div>
 
               {journalSaved && plan?.journal ? (
@@ -704,13 +718,16 @@ export default function TodayPage() {
                 </div>
               )}
 
-              <Link href="/progress/" className="journal-link">
-                <Bloom size={15} bare variant={2} />
-                دیدن باغ کامل
-                <Icon name="arrowLeft" size={13} />
-              </Link>
+              {modules.garden && (
+                <Link href="/progress/" className="journal-link">
+                  <Bloom size={15} bare variant={2} />
+                  دیدن باغ کامل
+                  <Icon name="arrowLeft" size={13} />
+                </Link>
+              )}
             </div>
           </section>
+          )}
         </div>
 
         <aside className="today-aside" aria-label="نگاه سریع به امروز">
@@ -751,21 +768,27 @@ export default function TodayPage() {
                 value={`${toFa(summary.langMinutes)} از ${toFa(summary.langTarget)} دقیقه`}
                 percent={(summary.langMinutes / Math.max(1, summary.langTarget)) * 100}
               />
-              <GlanceRow
-                label="تمرکز عمیق"
-                value={`${toFa(Math.round(summary.deepMinutes / 60))} ساعت`}
-                percent={(summary.deepMinutes / (5 * 60)) * 100}
-              />
-              <GlanceRow
-                label="باشگاه"
-                value={`${toFa(summary.gymCount)} از ${toFa(settings.gymPerWeek)} جلسه`}
-                percent={(summary.gymCount / Math.max(1, settings.gymPerWeek)) * 100}
-              />
-              <GlanceRow
-                label="لینکدین"
-                value={`${toFa(summary.linkedinPosts)} از ${toFa(settings.weeklyLinkedinPosts)} پست`}
-                percent={(summary.linkedinPosts / Math.max(1, settings.weeklyLinkedinPosts)) * 100}
-              />
+              {modules.focus && (
+                <GlanceRow
+                  label="تمرکز عمیق"
+                  value={`${toFa(Math.round(summary.deepMinutes / 60))} ساعت`}
+                  percent={(summary.deepMinutes / (5 * 60)) * 100}
+                />
+              )}
+              {modules.gym && (
+                <GlanceRow
+                  label="باشگاه"
+                  value={`${toFa(summary.gymCount)} از ${toFa(settings.gymPerWeek)} جلسه`}
+                  percent={(summary.gymCount / Math.max(1, settings.gymPerWeek)) * 100}
+                />
+              )}
+              {modules.linkedin && (
+                <GlanceRow
+                  label="لینکدین"
+                  value={`${toFa(summary.linkedinPosts)} از ${toFa(settings.weeklyLinkedinPosts)} پست`}
+                  percent={(summary.linkedinPosts / Math.max(1, settings.weeklyLinkedinPosts)) * 100}
+                />
+              )}
             </div>
           </div>
 
@@ -792,15 +815,17 @@ export default function TodayPage() {
             <p>{GARDEN_LINES[weekdayIndexFromKey(today) % GARDEN_LINES.length]}</p>
           </div>
 
-          <div className="mt-4 flex items-center justify-between rounded-2xl border px-4 py-3 text-[11px] text-muted" style={{ borderColor: "var(--line)" }}>
-            <span className="inline-flex items-center gap-2">
-              <Icon name="leaf" size={13} />
-              {streak > 0 ? `${toFa(streak)} روز پیاپی` : "امروز اولین گل"}
-            </span>
-            <span>
-              {toFa(garden.filter((day) => day.bloom).length)} از ۷
-            </span>
-          </div>
+          {modules.garden && (
+            <div className="mt-4 flex items-center justify-between rounded-2xl border px-4 py-3 text-[11px] text-muted" style={{ borderColor: "var(--line)" }}>
+              <span className="inline-flex items-center gap-2">
+                <Icon name="leaf" size={13} />
+                {streak > 0 ? `${toFa(streak)} روز پیاپی` : "امروز اولین گل"}
+              </span>
+              <span>
+                {toFa(garden.filter((day) => day.bloom).length)} از ۷
+              </span>
+            </div>
+          )}
         </aside>
       </div>
 

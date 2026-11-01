@@ -67,6 +67,7 @@ function SideRailGarden() {
   const weekTemplate = useAppStore((s) => s.weekTemplate);
   const today = useToday();
   if (!ready) return <div className="h-[132px]" />;
+  if (!settings.modules.garden) return null;
   const bloomData = { settings, categories, weekTemplate };
   const streak = streakOf(days, today, bloomData);
   const garden = gardenFor(days, today, 7, bloomData);
@@ -217,7 +218,7 @@ function MobileTopBar() {
         <BrandWord compact />
       </Link>
       <div className="flex items-center gap-2">
-        {ready && streak > 0 && (
+        {ready && settings.modules.garden && streak > 0 && (
           <span
             className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium text-muted"
             style={{ borderColor: "var(--line)" }}
