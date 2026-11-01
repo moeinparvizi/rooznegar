@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { AccountCard } from "@/components/account/AccountCard";
 import { Bloom } from "@/components/Bloom";
@@ -198,6 +199,73 @@ export default function MePage() {
 
       <section
         className="surface mt-6 p-5 sm:p-6"
+        aria-labelledby="customize-heading"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="eyebrow">
+              <Icon name="sparkle" size={13} />
+              شخصی‌سازی
+            </p>
+            <h2 id="customize-heading" className="mt-1 text-[18px] font-bold">
+              همه‌چیز مال خودت است
+            </h2>
+          </div>
+          <span className="chip" data-active="true">
+            بدون محدودیت
+          </span>
+        </div>
+        <p className="mt-2 text-[11.5px] leading-6 text-muted">
+          رنگ، دسته‌ها و ریتم هفتگی را جداگانه بچین. هر تغییری هم روی همین
+          دستگاه و هم در حساب ابری می‌ماند.
+        </p>
+        <div className="customize-grid mt-4">
+          <Link href="/me/appearance/" className="customize-card">
+            <span className="customize-icon">
+              <Icon name="sparkle" size={17} />
+            </span>
+            <strong>ظاهر و پالت</strong>
+            <small>
+              شش پالت، رنگ تاکیدی، حالت روشن و تاریک و شکل شکوفه‌ها.
+            </small>
+            <span className="customize-card-arrow">
+              باز کردن
+              <Icon name="arrowLeft" size={12} />
+            </span>
+          </Link>
+          <Link href="/me/categories/" className="customize-card">
+            <span className="customize-icon">
+              <Icon name="list" size={17} />
+            </span>
+            <strong>دسته‌ها</strong>
+            <small>
+              نام، آیکون و رنگ هر دسته را عوض کن یا برای حرفه‌ات دسته‌ی تازه
+              بساز.
+            </small>
+            <span className="customize-card-arrow">
+              باز کردن
+              <Icon name="arrowLeft" size={12} />
+            </span>
+          </Link>
+          <Link href="/me/template/" className="customize-card">
+            <span className="customize-icon">
+              <Icon name="calendar" size={17} />
+            </span>
+            <strong>قالب هفته</strong>
+            <small>
+              هفت روز، هر روز بلوک‌های خودش؛ از یک حرفه شروع کن و بعد خودت
+              بچین.
+            </small>
+            <span className="customize-card-arrow">
+              باز کردن
+              <Icon name="arrowLeft" size={12} />
+            </span>
+          </Link>
+        </div>
+      </section>
+
+      <section
+        className="surface mt-6 p-5 sm:p-6"
         aria-labelledby="rhythm-heading"
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -305,8 +373,8 @@ export default function MePage() {
             روزهای تازه چطور شروع شوند؟
           </h2>
           <p className="mt-2 text-[11.5px] leading-6 text-muted">
-            مبلمان روز یکی است؛ فقط یک ساعت جابه‌جا می‌شود. بلوک‌های اصلی زبان
-            و برنامه‌نویسی همیشه سر جایشان می‌مانند.
+            مبلمان روز یکی است؛ فقط یک ساعت جابه‌جا می‌شود. بلوک‌های اصلی و
+            بلوک‌های رشد همیشه سر جایشان می‌مانند.
           </p>
           <div className="mode-options mt-4" role="radiogroup" aria-label="حالت پیش‌فرض روز">
             <button
@@ -386,6 +454,10 @@ export default function MePage() {
               );
             })}
           </div>
+          <Link href="/me/appearance/" className="btn btn-outline btn-sm mt-4">
+            <Icon name="sparkle" size={14} />
+            پالت‌ها و رنگ تاکیدی
+          </Link>
         </section>
       </div>
 
@@ -694,7 +766,7 @@ export default function MePage() {
           </li>
           <li>
             <Icon name="leaf" size={15} />
-            زبان و برنامه‌نویسی هیچ‌وقت حذف نمی‌شوند؛ فقط کوتاه می‌شوند.
+            دسته‌های رشد هیچ‌وقت حذف نمی‌شوند؛ فقط کوتاه می‌شوند.
           </li>
           <li>
             <Icon name="leaf" size={15} />
