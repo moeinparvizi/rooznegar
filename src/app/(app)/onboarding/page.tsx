@@ -34,6 +34,7 @@ function OnboardingForm() {
   const params = useSearchParams();
   const nextParam = params.get("next");
   const [initial] = useState(() => useAppStore.getState());
+  const profileName = useAppStore((state) => state.profile.name);
   const saveProfile = useAppStore((state) => state.saveProfile);
   const updateSettings = useAppStore((state) => state.updateSettings);
   const applyTemplate = useAppStore((state) => state.applyTemplate);
@@ -59,10 +60,10 @@ function OnboardingForm() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (useAppStore.getState().profile.name.trim()) {
+    if (profileName.trim()) {
       router.replace(safeNext(nextParam));
     }
-  }, [router, nextParam]);
+  }, [profileName, router, nextParam]);
 
   useEffect(() => {
     let alive = true;
