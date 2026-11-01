@@ -1,4 +1,4 @@
-import type { AppSettings } from "./types";
+import type { AppSettings, AppSettingsV2 } from "./types";
 
 export const DEFAULT_SETTINGS: AppSettings = {
   wakeTime: "06:45",
@@ -21,5 +21,28 @@ export const DEFAULT_SETTINGS: AppSettings = {
   gymPerWeek: 3,
 };
 
-export const STORAGE_KEY = "rooznegar-v1";
+export const DEFAULT_SETTINGS_V2: AppSettingsV2 = {
+  ...DEFAULT_SETTINGS,
+  palette: "garden",
+  accent: "green",
+  lateEnabled: true,
+  lateShiftMinutes: 60,
+  templateId: "programmer",
+  modules: {
+    cefr: true,
+    linkedin: true,
+    gym: true,
+    journal: true,
+    focus: true,
+    garden: true,
+    review: true,
+    notifications: true,
+  },
+  gardenRule: "one",
+  bloomStyle: "auto",
+  workdays: [0, 1, 2, 3, 4],
+};
+
+export const STORAGE_KEY = "rooznegar-v2";
+export const LEGACY_STORAGE_KEY = "rooznegar-v1";
 export const THEME_KEY = "rz-theme";

@@ -1,3 +1,5 @@
+import type { IconName } from "@/components/Icon";
+
 export type Category =
   | "work"
   | "commute"
@@ -129,4 +131,96 @@ export interface AppData {
   reviews: WeekReview[];
   ideas: LinkedInIdea[];
   recoveries: Recovery[];
+}
+
+export type PaletteId = "garden" | "paper" | "night" | "ocean" | "clay" | "sky";
+export type AccentId = "green" | "blue" | "olive" | "tea" | "amber";
+export type TemplateId =
+  | "programmer"
+  | "athlete"
+  | "tailor"
+  | "student"
+  | "simple"
+  | "custom";
+export type CategoryTone =
+  | "green"
+  | "blue"
+  | "olive"
+  | "tea"
+  | "clay"
+  | "gold"
+  | "stone";
+export type ModuleId =
+  | "cefr"
+  | "linkedin"
+  | "gym"
+  | "journal"
+  | "focus"
+  | "garden"
+  | "review"
+  | "notifications";
+export type GardenRule = "one" | "half" | "core";
+export type BloomStyle = "auto" | "cream" | "gold" | "leaf";
+export type WeekdayIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export type Modules = Record<ModuleId, boolean>;
+
+export interface Profile {
+  name: string;
+  avatarEmoji?: string;
+}
+
+export interface CategoryDef {
+  id: string;
+  label: string;
+  short: string;
+  icon: IconName;
+  tone: CategoryTone;
+  builtin: boolean;
+  module?: "cefr" | "linkedin" | "gym";
+  growth?: boolean;
+}
+
+export interface TemplateBlock {
+  id: string;
+  title: string;
+  categoryId: string;
+  start: string;
+  end: string;
+  priority: Priority;
+  fixed: boolean;
+  movable: boolean;
+  compensable: boolean;
+  core: boolean;
+  note?: string;
+  muscle?: string;
+  review?: boolean;
+}
+
+export type WeekTemplate = Record<WeekdayIndex, { blocks: TemplateBlock[] }>;
+
+export interface AppSettingsV2 extends AppSettings {
+  palette: PaletteId;
+  accent: AccentId;
+  lateEnabled: boolean;
+  lateShiftMinutes: number;
+  templateId: TemplateId;
+  modules: Modules;
+  gardenRule: GardenRule;
+  bloomStyle: BloomStyle;
+  workdays: number[];
+}
+
+export interface AppDataV2 {
+  schemaVersion: 2;
+  updatedAt: string;
+  profile: Profile;
+  settings: AppSettingsV2;
+  categories: CategoryDef[];
+  weekTemplate: WeekTemplate;
+  days: Record<string, DayPlan>;
+  reviews: WeekReview[];
+  ideas: LinkedInIdea[];
+  recoveries: Recovery[];
+  seededAt: string;
+  baselineLangHours: number;
 }

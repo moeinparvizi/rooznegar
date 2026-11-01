@@ -1,4 +1,4 @@
-import type { Category } from "./types";
+import type { Category, CategoryDef } from "./types";
 
 export const CATEGORY_META: Record<
   Category,
@@ -25,6 +25,16 @@ export const CATEGORIES: Category[] = [
   "gym",
   "linkedin",
   "rest",
+];
+
+export const BUILTIN_CATEGORIES: CategoryDef[] = [
+  { id: "work", label: "کار", short: "کار", icon: "list", tone: "stone", builtin: true },
+  { id: "commute", label: "مسیر", short: "مسیر", icon: "headphones", tone: "blue", builtin: true },
+  { id: "language", label: "زبان", short: "زبان", icon: "book", tone: "green", builtin: true, module: "cefr", growth: true },
+  { id: "programming", label: "برنامه‌نویسی", short: "برنامه‌نویسی", icon: "target", tone: "olive", builtin: true, growth: true },
+  { id: "gym", label: "باشگاه", short: "باشگاه", icon: "dumbbell", tone: "clay", builtin: true, module: "gym" },
+  { id: "linkedin", label: "لینکدین", short: "لینکدین", icon: "linkedin", tone: "tea", builtin: true, module: "linkedin" },
+  { id: "rest", label: "استراحت", short: "استراحت", icon: "coffee", tone: "stone", builtin: true },
 ];
 
 export const MUSCLE_ROTATION = [
