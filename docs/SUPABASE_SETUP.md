@@ -23,6 +23,19 @@
 
 بعد از اجرا در **Table Editor** جدول `planner_data` را ببین و مطمئن شو **RLS enabled** است.
 
+اگر Postgres محلی داری، همین سیاست‌ها را می‌توانی بدون پروژه هم ثابت کنی. فایل [`supabase/tests/rls-local.sql`](../supabase/tests/rls-local.sql) همان مهاجرت را روی یک دیتابیس موقت با نقش‌های `anon` / `authenticated` / `service_role` می‌زند و بررسی می‌کند که هیچ کاربری ردیف دیگری را نمی‌بیند یا عوض نمی‌کند:
+
+```bash
+createdb rz_rls_test
+psql -d postgres -qc "create role anon nologin" \
+                   -qc "create role authenticated nologin" \
+                   -qc "create role service_role nologin bypassrls"
+psql -d rz_rls_test -v ON_ERROR_STOP=1 -f supabase/tests/rls-local.sql
+dropdb rz_rls_test
+```
+
+خروجی باید هشت خط `OK` بدهد و `rls_enabled` روی `t` باشد.
+
 ## ۳. ورود با ایمیل را روشن کن
 
 در **Authentication → Providers → Email**:
