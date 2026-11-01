@@ -1,0 +1,245 @@
+import { BUILTIN_CATEGORIES } from "./categories";
+import { DEFAULT_SETTINGS_V2 } from "./defaults";
+import { nextWeekdayKey, todayKey } from "./jalali";
+import { buildDaySchedule } from "./schedule";
+import type {
+  AppDataV2,
+  AppSettingsV2,
+  CategoryDef,
+  DayPlan,
+  LinkedInIdea,
+  Recovery,
+  TemplateBlock,
+  WeekReview,
+  WeekTemplate,
+  WeekdayIndex,
+} from "./types";
+
+type Rec = Record<string, unknown>;
+
+function isRecord(value: unknown): value is Rec {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function unwrap(raw: unknown): Rec | null {
+  if (!isRecord(raw)) return null;
+  if (isRecord(raw.state)) return raw.state;
+  if (isRecord(raw.data)) return raw.data;
+  return raw;
+}
+
+const PALETTES = new Set(["garden", "paper", "night", "ocean", "clay", "sky"]);
+const ACCENTS = new Set(["green", "blue", "olive", "tea", "amber"]);
+const TEMPLATES = new Set([
+  "programmer",
+  "athlete",
+  "tailor",
+  "student",
+  "simple",
+  "custom",
+]);
+const THEMES = new Set(["light", "dark", "system"]);
+const MODES = new Set(["early", "late"]);
+const GARDEN_RULES = new Set(["one", "half", "core"]);
+const BLOOM_STYLES = new Set(["auto", "cream", "gold", "leaf"]);
+
+function normalizeSettings(raw: unknown): AppSettingsV2 {
+  const out = { ...DEFAULT_SETTINGS_V2 } as AppSettingsV2 & Rec;
+  if (isRecord(raw)) {
+    for (const key of Object.keys(DEFAULT_SETTINGS_V2)) {
+      const fallback = (DEFAULT_SETTINGS_V2 as unknown as Rec)[key];
+      const value = raw[key];
+      if (
+        value !== null &&
+        value !== undefined &&
+        typeof value === typeof fallback &&
+        !Array.isArray(fallback)
+      ) {
+        out[key] = value;
+      }
+    }
+    if (isRecord(raw.notifications)) {
+      out.notifications = {
+        blockStart: raw.notifications.blockStart === true,
+        zeroRule: raw.notifications.zeroRule === true,
+        morning: raw.notifications.morning === true,
+      };
+    }
+    if (isRecord(raw.modules)) {
+      out.modules = {
+        ...DEFAULT_SETTINGS_V2.modules,
+        ...Object.fromEntries(
+          Object.keys(DEFAULT_SETTINGS_V2.modules).map((key) => [
+            key,
+            raw.modules?.[key] !== false,
+          ]),
+        ),
+      } as AppSettingsV2["modules"];
+    }
+    if (Array.isArray(raw.gymDays)) {
+      out.gymDays = raw.gymDays.filter((d): d is number => typeof d === "number");
+    }
+    if (Array.isArray(raw.workdays)) {
+      out.workdays = raw.workdays.filter((d): d is number => typeof d === "number");
+    }
+  }
+  if (!THEMES.has(String(out.theme))) out.theme = "system";
+  if (!MODES.has(String(out.defaultMode))) out.defaultMode = "early";
+  if (!PALETTES.has(String(out.palette))) out.palette = "garden";
+  if (!ACCENTS.has(String(out.accent))) out.accent = "green";
+  if (!TEMPLATES.has(String(out.templateId))) out.templateId = "programmer";
+  if (!GARDEN_RULES.has(String(out.gardenRule))) out.gardenRule = "one";
+  if (!BLOOM_STYLES.has(String(out.bloomStyle))) out.bloomStyle = "auto";
+  if (!Number.isFinite(out.lateShiftMinutes) || out.lateShiftMinutes < 15) {
+    out.lateShiftMinutes = 60;
+  }
+  return out as AppSettingsV2;
+}
+
+function isBlock(value: unknown): value is TemplateBlock {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.title === "string" &&
+    typeof value.categoryId === "string" &&
+    typeof value.start === "string" &&
+    typeof value.end === "string" &&
+    (value.priority === 1 || value.priority === 2 || value.priority === 3)
+  );
+}
+
+function toTemplateBlock(task: {
+  id: string;
+  title: string;
+  category: string;
+  startTime: string;
+  endTime: string;
+  priority: 1 | 2 | 3;
+  fixed?: boolean;
+  movable: boolean;
+  compensable?: boolean;
+  core?: boolean;
+  note?: string;
+  muscle?: string;
+}): TemplateBlock {
+  return {
+    id: task.id,
+    title: task.title,
+    categoryId: task.category,
+    start: task.startTime,
+    end: task.endTime,
+    priority: task.priority,
+    fixed: task.fixed ?? false,
+    movable: task.movable,
+    compensable: task.compensable ?? false,
+    core: task.core ?? false,
+    note: task.note,
+    muscle: task.muscle,
+    review: task.id === "weekly-review",
+  };
+}
+
+export function defaultWeekTemplate(
+  settings: AppSettingsV2,
+  anchor: string = todayKey(),
+): WeekTemplate {
+  const template = {} as WeekTemplate;
+  for (let index = 0; index < 7; index += 1) {
+    const dateKey = nextWeekdayKey(anchor, index, true);
+    const schedule = buildDaySchedule(dateKey, settings, "early");
+    template[index as WeekdayIndex] = {
+      blocks: schedule.blocks.map(toTemplateBlock),
+    };
+  }
+  return template;
+}
+
+function normalizeWeekTemplate(
+  raw: unknown,
+  settings: AppSettingsV2,
+): WeekTemplate {
+  if (isRecord(raw)) {
+    const template = {} as WeekTemplate;
+    let valid = true;
+    for (let index = 0; index < 7; index += 1) {
+      const day = raw[index];
+      if (!isRecord(day) || !Array.isArray(day.blocks) || !day.blocks.every(isBlock)) {
+        valid = false;
+        break;
+      }
+      template[index as WeekdayIndex] = {
+        blocks: day.blocks.map((block) => ({ ...(block as TemplateBlock) })),
+      };
+    }
+    if (valid) return template;
+  }
+  return defaultWeekTemplate(settings);
+}
+
+function normalizeCategories(raw: unknown): CategoryDef[] {
+  if (!Array.isArray(raw)) {
+    return BUILTIN_CATEGORIES.map((category) => ({ ...category }));
+  }
+  const valid = raw.filter(
+    (item): item is CategoryDef =>
+      isRecord(item) &&
+      typeof item.id === "string" &&
+      typeof item.label === "string" &&
+      typeof item.short === "string" &&
+      typeof item.icon === "string",
+  );
+  return valid.length
+    ? valid.map((item) => ({ ...item }))
+    : BUILTIN_CATEGORIES.map((c) => ({ ...c }));
+}
+
+function normalizeDays(raw: unknown): Record<string, DayPlan> {
+  if (!isRecord(raw)) return {};
+  const days: Record<string, DayPlan> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (isRecord(value) && isRecord(value.overrides)) {
+      days[key] = value as unknown as DayPlan;
+    }
+  }
+  return days;
+}
+
+function normalizeArray<T>(raw: unknown): T[] {
+  return Array.isArray(raw) ? (raw.filter(isRecord) as T[]) : [];
+}
+
+export function migrateData(input: unknown, now: Date = new Date()): AppDataV2 | null {
+  const root = unwrap(input);
+  if (!root || !isRecord(root.days)) return null;
+  const settings = normalizeSettings(root.settings);
+  const profile = isRecord(root.profile)
+    ? {
+        name: typeof root.profile.name === "string" ? root.profile.name : "",
+        avatarEmoji:
+          typeof root.profile.avatarEmoji === "string"
+            ? root.profile.avatarEmoji
+            : undefined,
+      }
+    : { name: "" };
+  const weekTemplate =
+    root.schemaVersion === 2
+      ? normalizeWeekTemplate(root.weekTemplate, settings)
+      : defaultWeekTemplate(settings);
+  return {
+    schemaVersion: 2,
+    updatedAt:
+      typeof root.updatedAt === "string" ? root.updatedAt : now.toISOString(),
+    profile,
+    settings,
+    categories: normalizeCategories(root.categories),
+    weekTemplate,
+    days: normalizeDays(root.days),
+    reviews: normalizeArray<WeekReview>(root.reviews),
+    ideas: normalizeArray<LinkedInIdea>(root.ideas),
+    recoveries: normalizeArray<Recovery>(root.recoveries),
+    seededAt:
+      typeof root.seededAt === "string" ? root.seededAt : now.toISOString(),
+    baselineLangHours:
+      typeof root.baselineLangHours === "number" ? root.baselineLangHours : 0,
+  };
+}
