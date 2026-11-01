@@ -42,7 +42,9 @@ export type IconName =
   | "lock"
   | "user"
   | "logout"
-  | "shield";
+  | "shield"
+  | "cloud"
+  | "cloudOff";
 
 interface IconProps extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -362,6 +364,20 @@ export function Icon({ name, size = 20, ...props }: IconProps) {
         <svg {...common}>
           <path d="M12 3 4.5 6v5.5c0 4.5 3.1 7.8 7.5 9.5 4.4-1.7 7.5-5 7.5-9.5V6L12 3Z" />
           <path d="m9 12 2 2 4-4" />
+        </svg>
+      );
+    case "cloud":
+      return (
+        <svg {...common}>
+          <path d="M7 18h10a4 4 0 0 0 .6-8A6 6 0 0 0 6 9a4.5 4.5 0 0 0 1 9Z" />
+        </svg>
+      );
+    case "cloudOff":
+      return (
+        <svg {...common}>
+          <path d="M3 3l18 18" />
+          <path d="M7 18h10a4 4 0 0 0 .6-8 6 6 0 0 0-9.4-4.6" />
+          <path d="M6 9a4.5 4.5 0 0 0 1 9" />
         </svg>
       );
     default:

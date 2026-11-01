@@ -3885,6 +3885,44 @@ textarea.field {
   font-size: 11.5px;
 }
 
+.sync-badge {
+  display: inline-flex;
+  inline-size: fit-content;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  white-space: nowrap;
+}
+.sync-badge-synced {
+  color: var(--green-deep);
+  border-color: var(--green-soft);
+}
+.sync-badge-pending,
+.sync-badge-syncing {
+  color: var(--gold);
+}
+.sync-badge-error {
+  color: var(--clay);
+}
+.sync-badge-offline,
+.sync-badge-local {
+  color: var(--faint);
+}
+button.sync-badge {
+  cursor: pointer;
+  font-family: inherit;
+}
+button.sync-badge:hover {
+  border-color: var(--line-strong);
+  background: var(--surface);
+}
+
 .auth-field {
   display: block;
   margin-top: 14px;

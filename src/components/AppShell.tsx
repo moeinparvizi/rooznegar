@@ -11,6 +11,7 @@ import { BrandMark, BrandWord } from "./Brand";
 import { Bloom } from "./Bloom";
 import { Icon, type IconName } from "./Icon";
 import { LoadingScreen } from "./LoadingScreen";
+import { SyncBadge } from "./sync/SyncBadge";
 
 const NAV: { href: string; label: string; icon: IconName; hint: string }[] = [
   { href: "/today/", label: "امروز", icon: "today", hint: "یک کار بزرگ" },
@@ -136,7 +137,10 @@ function SideRail() {
             </span>
           </span>
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-1.5">
+          <SyncBadge compact />
+          <ThemeToggle />
+        </div>
       </div>
 
       <nav aria-label="پیمایش اصلی" className="flex flex-col gap-1">
@@ -174,7 +178,8 @@ function SideRail() {
       <div className="mt-auto flex flex-col gap-4">
         <SideRailGarden />
         <div className="px-1">
-          <p className="text-[11.5px] leading-6 text-muted">
+          <SyncBadge />
+          <p className="mt-2 text-[11.5px] leading-6 text-muted">
             {profile.name ? `باغ ${profile.name}` : "باغ تو"}
             <br />
             هر روز فقط یک کار بزرگ.
@@ -213,6 +218,7 @@ function MobileTopBar() {
             {toFa(streak)}
           </span>
         )}
+        <SyncBadge compact />
         <ThemeToggle />
       </div>
     </header>
