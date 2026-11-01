@@ -59,6 +59,16 @@ describe("appearance tokens", () => {
     }
   });
 
+  it("keeps subtle surfaces close to their base in both modes", () => {
+    for (const palette of PALETTES) {
+      for (const mode of modes) {
+        const vars = tokens(palette.id, "green", mode);
+        expect(contrastRatio(vars["--paper-2"], vars["--paper"])).toBeLessThan(1.35);
+        expect(contrastRatio(vars["--surface-2"], vars["--surface"])).toBeLessThan(1.35);
+      }
+    }
+  });
+
   it("keeps every category chip readable on its own wash", () => {
     for (const palette of PALETTES) {
       for (const mode of modes) {

@@ -186,9 +186,9 @@ export function appearanceVars(
 
   const vars: Record<string, string> = {
     "--paper": paper,
-    "--paper-2": mix(paper, ink, 0.05),
+    "--paper-2": mix(ink, paper, 0.05),
     "--surface": surface,
-    "--surface-2": mix(surface, ink, 0.035),
+    "--surface-2": mix(ink, surface, 0.035),
     "--ink": ink,
     "--ink-2": ink2,
     "--muted": muted,

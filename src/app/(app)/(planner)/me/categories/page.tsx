@@ -402,6 +402,7 @@ export default function CategoriesPage() {
           <label className="setting-field">
             <span className="field-label">نام دسته</span>
             <input
+              id="category-name"
               className="field"
               value={addLabel}
               placeholder="خیاطی"
