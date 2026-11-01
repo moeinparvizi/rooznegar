@@ -4,7 +4,9 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { createAccountData } from "./account";
-import { STORAGE_KEY, THEME_KEY } from "./defaults";
+import { applyAppearance, readAppearance } from "./appearance";
+import { categoryDef } from "./categories";
+import { STORAGE_KEY } from "./defaults";
 import { todayKey, toFa } from "./jalali";
 import { defaultWeekTemplate, migrateData } from "./migrate";
 import { suggestCompensationDate } from "./schedule";
@@ -12,6 +14,7 @@ import { bootstrapStorage } from "./storage";
 import type {
   AppDataV2,
   AppSettingsV2,
+  Category,
   DayPlan,
   LinkedInIdea,
   Mode,
@@ -42,24 +45,12 @@ function stamp<T extends object>(patch: T): T & { updatedAt: string } {
 
 export function applyThemeChoice(theme: ThemeChoice) {
   if (typeof document === "undefined") return;
-  const prefersDark =
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const dark = theme === "dark" || (theme === "system" && prefersDark);
-  document.documentElement.dataset.theme = dark ? "dark" : "light";
-  try {
-    window.localStorage.setItem(THEME_KEY, theme);
-  } catch {
-    /* ignore */
-  }
-  document
-    .querySelectorAll('meta[name="theme-color"]')
-    .forEach((meta) => meta.setAttribute("content", dark ? "#111713" : "#f4efe3"));
+  applyAppearance({ ...readAppearance(), theme });
 }
 
 interface FocusLog {
   date: string;
-  category: "language" | "programming" | "free";
+  category: Category | "free";
   minutes: number;
 }
 
@@ -155,23 +146,26 @@ export const useAppStore = create<StoreState>()(
           withDay(state, date, (plan) => {
             const current = plan.overrides[task.id];
             const nextOverrides = { ...plan.overrides };
+            const def = categoryDef(task.category, state.categories);
+            const countsLanguage = def.module === "cefr";
+            const countsDeep = def.growth === true && !countsLanguage;
             let langMinutes = plan.langMinutes;
             let deepMinutes = plan.deepMinutes;
 
             if (current?.done) {
               delete nextOverrides[task.id];
-              if (task.category === "language") {
+              if (countsLanguage) {
                 langMinutes = Math.max(0, langMinutes - task.duration);
               }
-              if (task.category === "programming") {
+              if (countsDeep) {
                 deepMinutes = Math.max(0, deepMinutes - task.duration);
               }
             } else {
               nextOverrides[task.id] = { done: true };
-              if (task.category === "language") {
+              if (countsLanguage) {
                 langMinutes += task.duration;
               }
-              if (task.category === "programming") {
+              if (countsDeep) {
                 deepMinutes += task.duration;
               }
             }
@@ -243,19 +237,19 @@ export const useAppStore = create<StoreState>()(
         ),
 
       logFocus: ({ date, category, minutes }) =>
-        set((state) =>
-          withDay(state, date, (plan) => ({
+        set((state) => {
+          const def =
+            category === "free" ? null : categoryDef(category, state.categories);
+          const countsLanguage = def?.module === "cefr";
+          const countsDeep = def?.growth === true && !countsLanguage;
+          return withDay(state, date, (plan) => ({
             ...plan,
             focusBlocks: plan.focusBlocks + 1,
             focusMinutes: plan.focusMinutes + minutes,
-            langMinutes:
-              category === "language" ? plan.langMinutes + minutes : plan.langMinutes,
-            deepMinutes:
-              category === "programming"
-                ? plan.deepMinutes + minutes
-                : plan.deepMinutes,
-          })),
-        ),
+            langMinutes: countsLanguage ? plan.langMinutes + minutes : plan.langMinutes,
+            deepMinutes: countsDeep ? plan.deepMinutes + minutes : plan.deepMinutes,
+          }));
+        }),
 
       logCommuteLanguage: (date, minutes) =>
         set((state) =>
@@ -345,7 +339,7 @@ export const useAppStore = create<StoreState>()(
           }),
         ),
 
-      updateSettings: (patch) =>
+      updateSettings: (patch) => {
         set((state) => {
           const next: AppSettingsV2 = {
             ...state.settings,
@@ -359,26 +353,34 @@ export const useAppStore = create<StoreState>()(
               ...(patch.modules ?? {}),
             },
           };
-          if (patch.theme) applyThemeChoice(patch.theme);
           return stamp({ settings: next });
-        }),
-
-      setTheme: (theme) => {
-        applyThemeChoice(theme);
-        set((state) =>
-          stamp({
-            settings: { ...state.settings, theme },
-          }),
-        );
+        });
+        if (
+          patch.theme !== undefined ||
+          patch.palette !== undefined ||
+          patch.accent !== undefined ||
+          patch.bloomStyle !== undefined
+        ) {
+          applyAppearance(get().settings);
+        }
       },
 
-      initializeForUser: (data) => set(stamp({ ...data })),
+      setTheme: (theme) => {
+        const next = { ...get().settings, theme };
+        set(stamp({ settings: next }));
+        applyAppearance(next);
+      },
+
+      initializeForUser: (data) => {
+        set(stamp({ ...data }));
+        applyAppearance(data.settings);
+      },
 
       replaceFromRemote: (data) => {
         const migrated = migrateData({ app: "rooznegar", version: 2, data });
         if (!migrated) return false;
         set({ ...migrated, seededLocally: false });
-        applyThemeChoice(migrated.settings.theme);
+        applyAppearance(migrated.settings);
         return true;
       },
 
@@ -426,7 +428,7 @@ export const useAppStore = create<StoreState>()(
           const migrated = migrateData(parsed);
           if (!migrated) return { ok: false, message: "فایل معتبر نیست." };
           set(stamp(migrated));
-          applyThemeChoice(migrated.settings.theme);
+          applyAppearance(migrated.settings);
           return { ok: true, message: "داده‌ها برگشتند." };
         } catch {
           return { ok: false, message: "خواندن فایل ممکن نشد." };
@@ -436,7 +438,7 @@ export const useAppStore = create<StoreState>()(
       resetDemo: () => {
         const fresh = createAccountData(new Date(), get().profile);
         set(stamp(fresh));
-        applyThemeChoice(fresh.settings.theme);
+        applyAppearance(fresh.settings);
       },
     }),
     {
@@ -464,7 +466,7 @@ export const useAppStore = create<StoreState>()(
         return migrated ? { ...current, ...migrated } : current;
       },
       onRehydrateStorage: () => (state) => {
-        if (state?.settings?.theme) applyThemeChoice(state.settings.theme);
+        if (state?.settings) applyAppearance(state.settings);
       },
     },
   ),

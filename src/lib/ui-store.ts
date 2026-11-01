@@ -2,6 +2,10 @@
 
 import { create } from "zustand";
 
+import type { Category } from "./types";
+
+export type FocusCategory = Category | "free";
+
 export type OverlayName = "focus" | "commute" | "review" | null;
 
 export interface ToastMessage {
@@ -11,13 +15,10 @@ export interface ToastMessage {
 
 interface UIState {
   overlay: OverlayName;
-  focusCategory: "language" | "programming" | "free";
+  focusCategory: FocusCategory;
   focusLength: 25 | 50;
   toast: ToastMessage | null;
-  openFocus: (
-    category?: "language" | "programming" | "free",
-    length?: 25 | 50,
-  ) => void;
+  openFocus: (category?: FocusCategory, length?: 25 | 50) => void;
   openCommute: () => void;
   openReview: () => void;
   closeOverlay: () => void;

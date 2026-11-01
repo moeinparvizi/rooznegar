@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CATEGORY_META } from "@/lib/categories";
+import { categoryMeta } from "@/lib/categories";
 import {
   addDaysKey,
   formatDateWithWeekday,
@@ -48,6 +48,8 @@ export default function WeekPage() {
   const today = useToday();
   const days = useAppStore((s) => s.days);
   const settings = useAppStore((s) => s.settings);
+  const categories = useAppStore((s) => s.categories);
+  const weekTemplate = useAppStore((s) => s.weekTemplate);
   const reviews = useAppStore((s) => s.reviews);
   const recoveries = useAppStore((s) => s.recoveries);
   const openReview = useUIStore((s) => s.openReview);
@@ -62,6 +64,8 @@ export default function WeekPage() {
           seededAt: "",
           baselineLangHours: 0,
           settings,
+          categories,
+          weekTemplate,
           days,
           reviews,
           ideas: [],
@@ -69,7 +73,7 @@ export default function WeekPage() {
         },
         today,
       ),
-    [settings, days, reviews, recoveries, today],
+    [settings, categories, weekTemplate, days, reviews, recoveries, today],
   );
 
   const selectedDay =
@@ -313,10 +317,11 @@ export default function WeekPage() {
                 );
                 const done = !!override?.done;
                 const skipped = !!override?.skipped;
+                const meta = categoryMeta(block.category, categories);
                 return (
                   <div
                     key={block.id}
-                    className={`day-row cat-${block.category}`}
+                    className={`day-row ${meta.className}`}
                     data-state={
                       done ? "done" : skipped ? "skipped" : "plain"
                     }
@@ -333,7 +338,7 @@ export default function WeekPage() {
                         )}
                       </div>
                       <p className="mt-0.5 text-[10px] text-faint">
-                        {CATEGORY_META[block.category].label} ·{" "}
+                        {meta.label} ·{" "}
                         {formatDuration(block.duration)}
                       </p>
                     </div>

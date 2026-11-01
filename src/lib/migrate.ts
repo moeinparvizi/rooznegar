@@ -178,20 +178,30 @@ function normalizeWeekTemplate(
 }
 
 function normalizeCategories(raw: unknown): CategoryDef[] {
-  if (!Array.isArray(raw)) {
-    return BUILTIN_CATEGORIES.map((category) => ({ ...category }));
+  const builtin = new Map(BUILTIN_CATEGORIES.map((category) => [category.id, category]));
+  const seen = new Set<string>();
+  const out: CategoryDef[] = [];
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      if (
+        !isRecord(item) ||
+        typeof item.id !== "string" ||
+        typeof item.label !== "string" ||
+        typeof item.short !== "string" ||
+        typeof item.icon !== "string" ||
+        seen.has(item.id)
+      ) {
+        continue;
+      }
+      seen.add(item.id);
+      const base = builtin.get(item.id);
+      out.push(base ? { ...base, ...(item as unknown as CategoryDef) } : (item as unknown as CategoryDef));
+    }
   }
-  const valid = raw.filter(
-    (item): item is CategoryDef =>
-      isRecord(item) &&
-      typeof item.id === "string" &&
-      typeof item.label === "string" &&
-      typeof item.short === "string" &&
-      typeof item.icon === "string",
-  );
-  return valid.length
-    ? valid.map((item) => ({ ...item }))
-    : BUILTIN_CATEGORIES.map((c) => ({ ...c }));
+  for (const category of BUILTIN_CATEGORIES) {
+    if (!seen.has(category.id)) out.push({ ...category });
+  }
+  return out;
 }
 
 function normalizeDays(raw: unknown): Record<string, DayPlan> {

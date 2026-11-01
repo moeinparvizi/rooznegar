@@ -46,3 +46,4 @@ export const DEFAULT_SETTINGS_V2: AppSettingsV2 = {
 export const STORAGE_KEY = "rooznegar-v2";
 export const LEGACY_STORAGE_KEY = "rooznegar-v1";
 export const THEME_KEY = "rz-theme";
+export const APPEARANCE_KEY = "rz-appearance";

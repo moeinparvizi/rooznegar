@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Providers } from "@/components/Providers";
+import { PALETTE_PRELOAD } from "@/lib/appearance";
 import { asset } from "@/lib/site";
 import "./globals.css";
 
@@ -68,7 +69,7 @@ export const viewport: Viewport = {
   ],
 };
 
-const themeScript = `(function(){try{var t=localStorage.getItem('rz-theme');var m=window.matchMedia('(prefers-color-scheme: dark)').matches;var d=t==='dark'||((!t||t==='system')&&m);document.documentElement.dataset.theme=d?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();`;
+const appearanceScript = `(function(){try{var t=localStorage.getItem('rz-theme');var m=window.matchMedia('(prefers-color-scheme: dark)').matches;var mode=t==='dark'||((!t||t==='system')&&m)?'dark':'light';var a={};try{a=JSON.parse(localStorage.getItem('rz-appearance')||'{}')||{}}catch(e){}var table=${JSON.stringify(PALETTE_PRELOAD)};var vars=table[(a.palette||'garden')+':'+mode]||table['garden:'+mode];if(vars){for(var k in vars){document.documentElement.style.setProperty(k,vars[k]);}}var root=document.documentElement;root.dataset.theme=mode;root.dataset.palette=a.palette||'garden';root.dataset.bloom=a.bloomStyle||'auto';}catch(e){document.documentElement.dataset.theme='light';}})();`;
 
 export default function RootLayout({
   children,
@@ -82,7 +83,7 @@ export default function RootLayout({
       className={`${vazirArabic.variable} ${vazirLatin.variable}`}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: appearanceScript }} />
       </head>
       <body>
         <Providers>{children}</Providers>

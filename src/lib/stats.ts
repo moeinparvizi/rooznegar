@@ -1,4 +1,4 @@
-import { CEFF_LEVELS, MUSCLE_ROTATION } from "./categories";
+import { CEFF_LEVELS, MUSCLE_ROTATION, categoryDef, isRestCategory } from "./categories";
 import {
   addDaysKey,
   formatDateShort,
@@ -17,7 +17,19 @@ import {
   muscleForDate,
   suggestCompensationDate,
 } from "./schedule";
-import type { AppData, Category, DayPlan, DaySchedule } from "./types";
+import type {
+  AppData,
+  Category,
+  CategoryDef,
+  DayPlan,
+  DaySchedule,
+  WeekTemplate,
+} from "./types";
+
+export interface PlannerData extends AppData {
+  categories?: CategoryDef[];
+  weekTemplate?: WeekTemplate;
+}
 
 export type CellState =
   | "done"
@@ -78,7 +90,7 @@ export function streakOf(
   return count;
 }
 
-function scheduleFor(data: AppData, key: string): DaySchedule {
+function scheduleFor(data: PlannerData, key: string): DaySchedule {
   const plan = data.days[key];
   return buildDaySchedule(key, data.settings, plan?.mode);
 }
@@ -90,10 +102,11 @@ function cellFor(
   today: string,
   from: number,
   to: number,
+  categories?: readonly CategoryDef[],
 ): { state: CellState; done: number; total: number } {
   const relevant = schedule.blocks.filter((b) => {
     const m = timeToMinutes(b.startTime);
-    return b.category !== "rest" && m >= from && m < to;
+    return !isRestCategory(b.category, categories) && m >= from && m < to;
   });
   if (!relevant.length) return { state: "free", done: 0, total: 0 };
   const overrides = plan?.overrides ?? {};
@@ -144,7 +157,7 @@ export interface WeekSummary {
 }
 
 export function weekSummary(
-  data: AppData,
+  data: PlannerData,
   today: string,
   weekStart = startOfWeekKey(parseDateKey(today)),
 ): WeekSummary {
@@ -164,7 +177,15 @@ export function weekSummary(
       cells: BANDS.map((band) => ({
         band: band.key,
         label: band.label,
-        ...cellFor(schedule, plan, key, today, band.from, band.to),
+        ...cellFor(
+          schedule,
+          plan,
+          key,
+          today,
+          band.from,
+          band.to,
+          data.categories,
+        ),
       })),
     };
   });
@@ -183,8 +204,10 @@ export function weekSummary(
     if (!d.plan) return sum;
     return (
       sum +
-      Object.entries(d.plan.overrides).filter(
-        ([id, o]) => id === "gym" && o.done,
+      d.schedule.blocks.filter(
+        (block) =>
+          d.plan?.overrides[block.id]?.done &&
+          categoryDef(block.category, data.categories).module === "gym",
       ).length
     );
   }, 0);
@@ -264,7 +287,7 @@ export interface CefrStats {
   levelIndex: number;
 }
 
-export function cefrStats(data: AppData, today: string): CefrStats {
+export function cefrStats(data: PlannerData, today: string): CefrStats {
   const logMinutes = Object.values(data.days).reduce(
     (sum, p) => sum + p.langMinutes,
     0,
@@ -386,7 +409,7 @@ export interface GymStats {
   gymStart: string;
 }
 
-export function gymStats(data: AppData, today: string): GymStats {
+export function gymStats(data: PlannerData, today: string): GymStats {
   const currentWeek = startOfWeekKey(parseDateKey(today));
   const dayNames = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
   const planned = [...data.settings.gymDays]
@@ -432,7 +455,7 @@ export interface LinkedInStats {
   bestHour: string;
 }
 
-export function linkedinStats(data: AppData, today: string): LinkedInStats {
+export function linkedinStats(data: PlannerData, today: string): LinkedInStats {
   const currentWeek = startOfWeekKey(parseDateKey(today));
   const keys = weekDayKeys(currentWeek);
   const plans = keys
@@ -463,7 +486,7 @@ export function linkedinStats(data: AppData, today: string): LinkedInStats {
 }
 
 export function todayBlocksFor(
-  data: AppData,
+  data: PlannerData,
   today: string,
 ): { schedule: DaySchedule; plan: DayPlan | undefined } {
   const plan = data.days[today];
@@ -482,25 +505,30 @@ export function minutesToHoursLabel(minutes: number): string {
   return `${toFa(Math.round(h * 10) / 10)} ساعت`;
 }
 
-export function categoryImpact(category: Category): string {
-  switch (category) {
-    case "gym":
-      return "به پنجشنبه منتقل می‌شود؛ عضله‌ها فراموش نمی‌کنند.";
-    case "linkedin":
-      return "این هفته یک پست کمتر؛ هدف از دست نمی‌رود.";
-    case "language":
-      return "بلوک اصلی زبان است و هرگز حذف نمی‌شود.";
-    case "programming":
-      return "بلوک عمیق برنامه‌نویسی است و هرگز حذف نمی‌شود.";
-    default:
-      return "فقط زمان، نه پیشرفت.";
+export function categoryImpact(
+  category: Category,
+  categories?: readonly CategoryDef[],
+): string {
+  const def = categoryDef(category, categories);
+  if (def.module === "gym") {
+    return "به پنجشنبه منتقل می‌شود؛ عضله‌ها فراموش نمی‌کنند.";
   }
+  if (def.module === "linkedin") {
+    return "این هفته یک پست کمتر؛ هدف از دست نمی‌رود.";
+  }
+  if (def.module === "cefr") {
+    return "بلوک اصلی زبان است و هرگز حذف نمی‌شود.";
+  }
+  if (def.growth) {
+    return `بلوک اصلی ${def.label} است و هرگز حذف نمی‌شود.`;
+  }
+  return "فقط زمان، نه پیشرفت.";
 }
 
 export function dayNumberLabel(key: string): string {
   return toFa(parseDateKey(key).getDate());
 }
 
-export function muscleForToday(data: AppData, today: string) {
+export function muscleForToday(data: PlannerData, today: string) {
   return muscleForDate(today, data.settings);
 }

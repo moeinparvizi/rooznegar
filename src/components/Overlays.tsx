@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { categoryDef } from "@/lib/categories";
 import { formatDuration, toFa } from "@/lib/jalali";
 import { useAppStore, useToday } from "@/lib/store";
 import { useUIStore } from "@/lib/ui-store";
@@ -112,6 +113,7 @@ function FocusTimer() {
   const showToast = useUIStore((s) => s.showToast);
   const today = useToday();
   const logFocus = useAppStore((s) => s.logFocus);
+  const categories = useAppStore((s) => s.categories);
   const plan = useAppStore((s) => s.days[today]);
   const [length, setLength] = useState<FocusLength>(preferredLength);
   const [phase, setPhase] = useState<"focus" | "rest">("focus");
@@ -122,11 +124,9 @@ function FocusTimer() {
   } | null>(null);
 
   const categoryLabel =
-    category === "language"
-      ? "زبان"
-      : category === "programming"
-        ? "برنامه‌نویسی عمیق"
-        : "تمرکز آزاد";
+    category === "free"
+      ? "تمرکز آزاد"
+      : categoryDef(category, categories).label;
 
   const completeRef = useRef<() => void>(() => {});
   const { left, running, toggle, reset, restart } = useCountdown(

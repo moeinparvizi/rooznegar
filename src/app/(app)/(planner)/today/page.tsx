@@ -2,7 +2,14 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CATEGORY_META, GARDEN_LINES, JOURNAL_PROMPTS } from "@/lib/categories";
+import {
+  GARDEN_LINES,
+  JOURNAL_PROMPTS,
+  categoryDef,
+  categoryMeta,
+  isGrowthCategory,
+  isRestCategory,
+} from "@/lib/categories";
 import {
   formatDateLong,
   formatDateWithWeekday,
@@ -34,7 +41,7 @@ import {
 import { useAppStore, useToday } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
 import { useUIStore } from "@/lib/ui-store";
-import type { DayPlan, DaySchedule, Mode, Task } from "@/lib/types";
+import type { Category, DayPlan, DaySchedule, Mode, Task } from "@/lib/types";
 import { Bloom } from "@/components/Bloom";
 import { Icon } from "@/components/Icon";
 import { Sheet } from "@/components/Sheet";
@@ -72,6 +79,7 @@ function NowRow({ now }: { now: Date }) {
 function Timeline({
   schedule,
   plan,
+  categories,
   now,
   onToggle,
   onOpenFocus,
@@ -80,9 +88,10 @@ function Timeline({
 }: {
   schedule: DaySchedule;
   plan: DayPlan | undefined;
+  categories: ReturnType<typeof useAppStore.getState>["categories"];
   now: Date;
   onToggle: (task: Task) => void;
-  onOpenFocus: (category: "language" | "programming" | "free") => void;
+  onOpenFocus: (category: Category | "free") => void;
   onOpenCommute: () => void;
   onJournal: () => void;
 }) {
@@ -102,7 +111,7 @@ function Timeline({
     const override = overrides[block.id];
     const isBig = block.id === schedule.bigTaskId;
     const skipped = state === "skipped";
-    const meta = CATEGORY_META[block.category];
+    const meta = categoryMeta(block.category, categories);
     const showCheck = !skipped;
 
     let action: { label: string; icon: "headphones" | "target" | "pen"; run: () => void } | null =
@@ -110,12 +119,11 @@ function Timeline({
     if (state === "current") {
       if (block.category === "commute") {
         action = { label: "حالت مسیر", icon: "headphones", run: onOpenCommute };
-      } else if (block.category === "language" || block.category === "programming") {
+      } else if (isGrowthCategory(block.category, categories)) {
         action = {
           label: "تمرکز",
           icon: "target",
-          run: () =>
-            onOpenFocus(block.category === "language" ? "language" : "programming"),
+          run: () => onOpenFocus(block.category),
         };
       } else if (block.id === "journal") {
         action = { label: "یک خط بنویس", icon: "pen", run: onJournal };
@@ -134,7 +142,7 @@ function Timeline({
             data-state={state === "done" ? "done" : skipped ? "skipped" : undefined}
           />
         </div>
-        <div className={`tl-card cat-${block.category}`} data-state={state}>
+        <div className={`tl-card ${meta.className}`} data-state={state}>
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -154,7 +162,8 @@ function Timeline({
                     className="h-1.5 w-1.5 rounded-full"
                     style={{ background: "var(--cat)" }}
                   />
-                  {block.category === "gym" && block.muscle
+                  {categoryDef(block.category, categories).module === "gym" &&
+                  block.muscle
                     ? block.muscle
                     : meta.label}
                 </span>
@@ -256,6 +265,8 @@ export default function TodayPage() {
   const now = useNow(30_000);
   const days = useAppStore((s) => s.days);
   const settings = useAppStore((s) => s.settings);
+  const categories = useAppStore((s) => s.categories);
+  const weekTemplate = useAppStore((s) => s.weekTemplate);
   const recoveries = useAppStore((s) => s.recoveries);
   const ideas = useAppStore((s) => s.ideas);
   const reviews = useAppStore((s) => s.reviews);
@@ -272,6 +283,8 @@ export default function TodayPage() {
       seededAt: "",
       baselineLangHours: 0,
       settings,
+      categories,
+      weekTemplate,
       days,
       reviews,
       ideas,
@@ -292,6 +305,8 @@ export default function TodayPage() {
           seededAt: "",
           baselineLangHours: 0,
           settings,
+          categories,
+          weekTemplate,
           days,
           reviews,
           ideas,
@@ -299,7 +314,7 @@ export default function TodayPage() {
         },
         today,
       ),
-    [settings, days, reviews, ideas, recoveries, today],
+    [settings, categories, weekTemplate, days, reviews, ideas, recoveries, today],
   );
 
   const garden = useMemo(() => gardenFor(days, today, 7), [days, today]);
@@ -311,7 +326,9 @@ export default function TodayPage() {
     null;
   const bigDone = bigTask ? !!overrides[bigTask.id]?.done : false;
 
-  const actionable = schedule.blocks.filter((block) => block.category !== "rest");
+  const actionable = schedule.blocks.filter(
+    (block) => !isRestCategory(block.category, categories),
+  );
   const doneCount = actionable.filter((block) => overrides[block.id]?.done).length;
   const dayProgress = actionable.length
     ? Math.round((doneCount / actionable.length) * 100)
@@ -399,14 +416,10 @@ export default function TodayPage() {
   const nowAction =
     current && current.category === "commute"
       ? { label: "حالت مسیر", run: openCommute }
-      : current &&
-          (current.category === "language" || current.category === "programming")
+      : current && isGrowthCategory(current.category, categories)
         ? {
             label: "تمرکز",
-            run: () =>
-              openFocus(
-                current.category === "language" ? "language" : "programming",
-              ),
+            run: () => openFocus(current.category),
           }
         : null;
 
@@ -465,7 +478,7 @@ export default function TodayPage() {
             </div>
 
             {bigTask ? (
-              <div className={`hero-task cat-${bigTask.category}`}>
+              <div className={`hero-task ${categoryMeta(bigTask.category, categories).className}`}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <span className="eyebrow">کار بزرگ امروز</span>
@@ -486,11 +499,7 @@ export default function TodayPage() {
                   <button
                     type="button"
                     className="btn btn-primary"
-                    onClick={() =>
-                      openFocus(
-                        bigTask.category === "language" ? "language" : "programming",
-                      )
-                    }
+                    onClick={() => openFocus(bigTask.category)}
                   >
                     <Icon name="play" size={15} />
                     {bigDone ? "یک نوبت دیگر" : "شروع تمرکز"}
@@ -600,6 +609,7 @@ export default function TodayPage() {
             <Timeline
               schedule={schedule}
               plan={plan}
+              categories={categories}
               now={now}
               onToggle={toggle}
               onOpenFocus={openFocus}
@@ -846,8 +856,10 @@ export default function TodayPage() {
             <ul className="shift-list">
               {proposal.changes.map((change) => (
                 <li key={`${change.taskId}-${change.kind}`}>
-                  <span className={`cat-pill cat-${change.category}`}>
-                    {CATEGORY_META[change.category].label}
+                  <span
+                    className={`cat-pill ${categoryMeta(change.category, categories).className}`}
+                  >
+                    {categoryMeta(change.category, categories).label}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-medium">{change.title}</p>
@@ -919,7 +931,7 @@ export default function TodayPage() {
                 <button
                   key={task.id}
                   type="button"
-                  className={`skip-option cat-${task.category}`}
+                  className={`skip-option ${categoryMeta(task.category, categories).className}`}
                   data-active={checked}
                   onClick={() =>
                     setSkipIds((ids) =>
@@ -936,13 +948,15 @@ export default function TodayPage() {
                   <span className="min-w-0 flex-1 text-right">
                     <span className="flex flex-wrap items-center gap-2">
                       <strong className="text-[13.5px] font-semibold">{task.title}</strong>
-                      <span className="cat-pill">{CATEGORY_META[task.category].label}</span>
+                      <span className="cat-pill">
+                        {categoryMeta(task.category, categories).label}
+                      </span>
                       <span className="text-[10.5px] text-faint">
                         {formatDuration(task.duration)}
                       </span>
                     </span>
                     <span className="mt-1 block text-[10.5px] leading-5 text-muted">
-                      {categoryImpact(task.category)}
+                      {categoryImpact(task.category, categories)}
                     </span>
                   </span>
                 </button>

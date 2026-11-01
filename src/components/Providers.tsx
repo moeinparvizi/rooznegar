@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { MotionConfig } from "motion/react";
+import { applyAppearance, readAppearance } from "@/lib/appearance";
 import { THEME_KEY } from "@/lib/defaults";
-import { applyThemeChoice, useAppStore, useHydrated } from "@/lib/store";
+import { useAppStore, useHydrated } from "@/lib/store";
 import type { ThemeChoice } from "@/lib/types";
 import { AuthProvider } from "./auth/AuthContext";
 import { Overlays } from "./Overlays";
@@ -22,22 +23,27 @@ function readStoredTheme(): ThemeChoice | null {
   }
 }
 
-function ThemeSync() {
+function AppearanceSync() {
   const hydrated = useHydrated();
-  const stored = useAppStore((s) => s.settings.theme);
+  const stored = useAppStore((s) => s.settings);
   const [publicTheme] = useState<ThemeChoice>(() =>
     typeof window === "undefined" ? "system" : readStoredTheme() ?? "system",
   );
-  const theme = hydrated ? stored : publicTheme;
+  const [publicChoice] = useState(() => readAppearance());
+  const theme = hydrated ? stored.theme : publicTheme;
+  const palette = hydrated ? stored.palette : publicChoice.palette;
+  const accent = hydrated ? stored.accent : publicChoice.accent;
+  const bloomStyle = hydrated ? stored.bloomStyle : publicChoice.bloomStyle;
 
   useEffect(() => {
-    applyThemeChoice(theme);
+    applyAppearance({ theme, palette, accent, bloomStyle });
     if (theme !== "system") return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => applyThemeChoice("system");
+    const onChange = () =>
+      applyAppearance({ theme: "system", palette, accent, bloomStyle });
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
-  }, [theme]);
+  }, [theme, palette, accent, bloomStyle]);
 
   return null;
 }
@@ -46,7 +52,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <MotionConfig reducedMotion="user">
       <AuthProvider>
-        <ThemeSync />
+        <AppearanceSync />
         {children}
         <Overlays />
         <ToastHost />

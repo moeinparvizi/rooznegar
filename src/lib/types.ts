@@ -1,13 +1,6 @@
 import type { IconName } from "@/components/Icon";
 
-export type Category =
-  | "work"
-  | "commute"
-  | "language"
-  | "programming"
-  | "gym"
-  | "linkedin"
-  | "rest";
+export type Category = string;
 
 export type Mode = "early" | "late";
 export type ThemeChoice = "light" | "dark" | "system";
@@ -178,6 +171,7 @@ export interface CategoryDef {
   builtin: boolean;
   module?: "cefr" | "linkedin" | "gym";
   growth?: boolean;
+  rest?: boolean;
 }
 
 export interface TemplateBlock {

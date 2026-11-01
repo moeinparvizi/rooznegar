@@ -1,9 +1,9 @@
 const PETAL_COLORS = [
-  "var(--green)",
-  "var(--gold)",
-  "var(--blue)",
-  "var(--clay)",
-  "var(--olive)",
+  "var(--petal-1)",
+  "var(--petal-2)",
+  "var(--petal-3)",
+  "var(--petal-4)",
+  "var(--petal-5)",
 ];
 
 export function Bloom({

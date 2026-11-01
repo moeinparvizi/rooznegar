@@ -47,7 +47,7 @@ describe("migrateData", () => {
     expect(data?.settings.palette).toBe("garden");
     expect(data?.settings.modules.garden).toBe(true);
     expect(data?.days["2026-11-01"].overrides.deep.done).toBe(true);
-    expect(data?.categories).toHaveLength(7);
+    expect(data?.categories).toHaveLength(10);
     expect(Object.keys(data?.weekTemplate ?? {})).toHaveLength(7);
     expect(data?.weekTemplate[0].blocks.length).toBeGreaterThan(0);
   });
@@ -73,6 +73,29 @@ describe("migrateData", () => {
     expect(second?.settings.modules.linkedin).toBe(true);
     expect(second?.settings.palette).toBe("garden");
     expect(second?.weekTemplate[2].blocks.length).toBeGreaterThan(0);
+  });
+
+  it("merges new builtin categories into persisted lists", () => {
+    const first = migrateData(v1(), now);
+    const data = migrateData(
+      {
+        ...first,
+        categories: [
+          {
+            id: "work",
+            label: "کار من",
+            short: "کار",
+            icon: "list",
+            tone: "stone",
+            builtin: true,
+          },
+        ],
+      },
+      now,
+    );
+    expect(data?.categories.find((c) => c.id === "work")?.label).toBe("کار من");
+    expect(data?.categories.find((c) => c.id === "craft")?.growth).toBe(true);
+    expect(data?.categories.some((c) => c.id === "rest" && c.rest)).toBe(true);
   });
 
   it("rejects data without days", () => {

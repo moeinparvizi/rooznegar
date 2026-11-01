@@ -1,4 +1,4 @@
-import type { AccentId, PaletteId } from "./types";
+import type { AccentId, CategoryTone, PaletteId } from "./types";
 
 export interface PaletteDef {
   id: PaletteId;
@@ -59,4 +59,21 @@ export const ACCENTS: { id: AccentId; label: string; light: string; dark: string
   { id: "olive", label: "زیتونی", light: "#6f7a4f", dark: "#bcc994" },
   { id: "tea", label: "فیروزه‌ای", light: "#3f7371", dark: "#8fc7c3" },
   { id: "amber", label: "کهربایی", light: "#8a6528", dark: "#dcc084" },
+];
+
+export interface ToneDef {
+  id: CategoryTone;
+  label: string;
+  light: string;
+  dark: string;
+}
+
+export const CATEGORY_TONES: ToneDef[] = [
+  { id: "green", label: "سبز", light: "#3f6b57", dark: "#8fbe9c" },
+  { id: "blue", label: "آبی", light: "#4c6f8c", dark: "#9cb9d8" },
+  { id: "olive", label: "زیتونی", light: "#6f7a4f", dark: "#bcc994" },
+  { id: "tea", label: "فیروزه‌ای", light: "#3f7371", dark: "#8fc7c3" },
+  { id: "clay", label: "سفالی", light: "#9a6b4f", dark: "#d9a784" },
+  { id: "gold", label: "طلایی", light: "#8a6528", dark: "#dcc084" },
+  { id: "stone", label: "سنگی", light: "#6f6a5e", dark: "#b7b1a3" },
 ];
