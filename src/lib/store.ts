@@ -2,63 +2,25 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { del as idbDel, get as idbGet, set as idbSet } from "idb-keyval";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { DEFAULT_SETTINGS, STORAGE_KEY, THEME_KEY } from "./defaults";
+import { createAccountData } from "./account";
+import { STORAGE_KEY, THEME_KEY } from "./defaults";
 import { todayKey, toFa } from "./jalali";
+import { defaultWeekTemplate, migrateData } from "./migrate";
 import { suggestCompensationDate } from "./schedule";
-import { createSeedData } from "./seed";
+import { bootstrapStorage } from "./storage";
 import type {
-  AppData,
-  AppSettings,
+  AppDataV2,
+  AppSettingsV2,
   DayPlan,
   LinkedInIdea,
   Mode,
+  Profile,
   Recovery,
   Task,
   ThemeChoice,
   WeekReview,
 } from "./types";
-
-const idbStorage = {
-  getItem: async (name: string): Promise<string | null> => {
-    try {
-      const value = await idbGet<string>(name);
-      if (value) return value;
-    } catch {
-      /* fall back to localStorage */
-    }
-    try {
-      return window.localStorage.getItem(name);
-    } catch {
-      return null;
-    }
-  },
-  setItem: async (name: string, value: string): Promise<void> => {
-    try {
-      await idbSet(name, value);
-    } catch {
-      /* fall back below */
-    }
-    try {
-      window.localStorage.setItem(name, value);
-    } catch {
-      /* storage unavailable */
-    }
-  },
-  removeItem: async (name: string): Promise<void> => {
-    try {
-      await idbDel(name);
-    } catch {
-      /* ignore */
-    }
-    try {
-      window.localStorage.removeItem(name);
-    } catch {
-      /* ignore */
-    }
-  },
-};
 
 function emptyPlan(date: string, mode: DayPlan["mode"]): DayPlan {
   return {
@@ -72,6 +34,10 @@ function emptyPlan(date: string, mode: DayPlan["mode"]): DayPlan {
     linkedinPosts: 0,
     linkedinComments: 0,
   };
+}
+
+function stamp<T extends object>(patch: T): T & { updatedAt: string } {
+  return { ...patch, updatedAt: new Date().toISOString() };
 }
 
 export function applyThemeChoice(theme: ThemeChoice) {
@@ -97,7 +63,7 @@ interface FocusLog {
   minutes: number;
 }
 
-interface StoreState extends AppData {
+interface StoreState extends AppDataV2 {
   toggleDone: (date: string, task: Task) => void;
   ensureDay: (date: string) => void;
   setMode: (date: string, mode: Mode) => void;
@@ -111,8 +77,11 @@ interface StoreState extends AppData {
   addIdea: (text: string) => void;
   scheduleIdea: (id: string) => void;
   removeIdea: (id: string) => void;
-  updateSettings: (patch: Partial<AppSettings>) => void;
+  updateSettings: (patch: Partial<AppSettingsV2>) => void;
   setTheme: (theme: ThemeChoice) => void;
+  initializeForUser: (data: AppDataV2) => void;
+  saveProfile: (patch: Partial<Profile>) => void;
+  regenerateWeekTemplate: () => void;
   exportJson: () => string;
   importJson: (raw: string) => { ok: boolean; message: string };
   resetDemo: () => void;
@@ -121,17 +90,15 @@ interface StoreState extends AppData {
 function withDay(
   state: StoreState,
   date: string,
-  updater: (plan: DayPlan, settings: AppSettings) => DayPlan,
-): Pick<StoreState, "days"> {
-  const plan =
-    state.days[date] ??
-    emptyPlan(date, state.settings.defaultMode);
-  return {
+  updater: (plan: DayPlan, settings: AppSettingsV2) => DayPlan,
+): Pick<StoreState, "days" | "updatedAt"> {
+  const plan = state.days[date] ?? emptyPlan(date, state.settings.defaultMode);
+  return stamp({
     days: {
       ...state.days,
       [date]: updater(plan, state.settings),
     },
-  };
+  });
 }
 
 function addRecovery(
@@ -159,29 +126,26 @@ function addRecovery(
 export const useAppStore = create<StoreState>()(
   persist(
     (set, get) => ({
-      ...createSeedData(),
+      ...createAccountData(),
 
       ensureDay: (date) =>
         set((state) => {
           if (state.days[date]) return {};
-          return {
+          return stamp({
             days: {
               ...state.days,
               [date]: emptyPlan(date, state.settings.defaultMode),
             },
-          };
+          });
         }),
 
       setMode: (date, mode) =>
-        set((state) => ({
-          days: {
-            ...state.days,
-            [date]: {
-              ...(state.days[date] ?? emptyPlan(date, mode)),
-              mode,
-            },
-          },
-        })),
+        set((state) =>
+          withDay(state, date, (plan) => ({
+            ...plan,
+            mode,
+          })),
+        ),
 
       toggleDone: (date, task) =>
         set((state) =>
@@ -241,29 +205,31 @@ export const useAppStore = create<StoreState>()(
               };
             }
           }
-          return { ...next, recoveries };
+          return stamp({ days: next.days, recoveries });
         }),
 
       scheduleRecovery: (date, task) =>
-        set((state) => ({
-          recoveries: addRecovery(state.recoveries, date, task),
-          days: state.days[date]
-            ? {
-                ...state.days,
-                [date]: {
-                  ...state.days[date],
-                  overrides: {
-                    ...state.days[date].overrides,
-                    [task.id]: {
-                      ...(state.days[date].overrides[task.id] ?? {}),
-                      skipped: true,
-                      recovered: true,
+        set((state) =>
+          stamp({
+            recoveries: addRecovery(state.recoveries, date, task),
+            days: state.days[date]
+              ? {
+                  ...state.days,
+                  [date]: {
+                    ...state.days[date],
+                    overrides: {
+                      ...state.days[date].overrides,
+                      [task.id]: {
+                        ...(state.days[date].overrides[task.id] ?? {}),
+                        skipped: true,
+                        recovered: true,
+                      },
                     },
                   },
-                },
-              }
-            : state.days,
-        })),
+                }
+              : state.days,
+          }),
+        ),
 
       addJournal: (date, text) =>
         set((state) =>
@@ -316,8 +282,8 @@ export const useAppStore = create<StoreState>()(
             ...state.reviews.filter((r) => r.weekStart !== review.weekStart),
             review,
           ].sort((a, b) => b.weekStart.localeCompare(a.weekStart));
-          if (!applyTargets) return { reviews };
-          const nextSettings: AppSettings = {
+          if (!applyTargets) return stamp({ reviews });
+          const nextSettings: AppSettingsV2 = {
             ...state.settings,
             weeklyLangTargetMinutes: review.targetLangMinutes,
           };
@@ -334,7 +300,7 @@ export const useAppStore = create<StoreState>()(
           if (review.answers.reduce === "باشگاه") {
             nextSettings.gymPerWeek = Math.max(2, nextSettings.gymPerWeek - 1);
           }
-          return { reviews, settings: nextSettings };
+          return stamp({ reviews, settings: nextSettings });
         }),
 
       addIdea: (text) =>
@@ -346,68 +312,95 @@ export const useAppStore = create<StoreState>()(
             text: clean,
             status: "idea",
           };
-          return { ideas: [idea, ...state.ideas] };
+          return stamp({ ideas: [idea, ...state.ideas] });
         }),
 
       scheduleIdea: (id) =>
-        set((state) => ({
-          ideas: state.ideas.map((idea) => {
-            if (idea.id !== id) return idea;
-            const d = new Date();
-            const current = (d.getDay() + 1) % 7;
-            let delta = (3 - current + 7) % 7;
-            if (delta === 0) delta = 7;
-            d.setDate(d.getDate() + delta);
-            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-            return {
-              ...idea,
-              status: "scheduled",
-              publishAt: `${key} 09:30`,
-            };
+        set((state) =>
+          stamp({
+            ideas: state.ideas.map((idea) => {
+              if (idea.id !== id) return idea;
+              const d = new Date();
+              const current = (d.getDay() + 1) % 7;
+              let delta = (3 - current + 7) % 7;
+              if (delta === 0) delta = 7;
+              d.setDate(d.getDate() + delta);
+              const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+              return {
+                ...idea,
+                status: "scheduled",
+                publishAt: `${key} 09:30`,
+              };
+            }),
           }),
-        })),
+        ),
 
       removeIdea: (id) =>
-        set((state) => ({
-          ideas: state.ideas.filter((idea) => idea.id !== id),
-        })),
+        set((state) =>
+          stamp({
+            ideas: state.ideas.filter((idea) => idea.id !== id),
+          }),
+        ),
 
       updateSettings: (patch) =>
         set((state) => {
-          const next = {
+          const next: AppSettingsV2 = {
             ...state.settings,
             ...patch,
             notifications: {
               ...state.settings.notifications,
               ...(patch.notifications ?? {}),
             },
+            modules: {
+              ...state.settings.modules,
+              ...(patch.modules ?? {}),
+            },
           };
           if (patch.theme) applyThemeChoice(patch.theme);
-          return { settings: next };
+          return stamp({ settings: next });
         }),
 
       setTheme: (theme) => {
         applyThemeChoice(theme);
-        set((state) => ({
-          settings: { ...state.settings, theme },
-        }));
+        set((state) =>
+          stamp({
+            settings: { ...state.settings, theme },
+          }),
+        );
       },
+
+      initializeForUser: (data) => set(stamp({ ...data })),
+
+      saveProfile: (patch) =>
+        set((state) =>
+          stamp({ profile: { ...state.profile, ...patch } }),
+        ),
+
+      regenerateWeekTemplate: () =>
+        set((state) =>
+          stamp({ weekTemplate: defaultWeekTemplate(state.settings) }),
+        ),
 
       exportJson: () => {
         const state = get();
-        const data: AppData = {
-          seededAt: state.seededAt,
-          baselineLangHours: state.baselineLangHours,
+        const data: AppDataV2 = {
+          schemaVersion: 2,
+          updatedAt: state.updatedAt,
+          profile: state.profile,
           settings: state.settings,
+          categories: state.categories,
+          weekTemplate: state.weekTemplate,
           days: state.days,
           reviews: state.reviews,
           ideas: state.ideas,
           recoveries: state.recoveries,
+          seededAt: state.seededAt,
+          baselineLangHours: state.baselineLangHours,
         };
         return JSON.stringify(
           {
             app: "rooznegar",
-            version: 1,
+            version: 2,
             exportedAt: new Date().toISOString(),
             data,
           },
@@ -419,40 +412,10 @@ export const useAppStore = create<StoreState>()(
       importJson: (raw) => {
         try {
           const parsed = JSON.parse(raw);
-          const candidate = parsed?.data ?? parsed;
-          if (!candidate || typeof candidate !== "object" || !candidate.days) {
-            return { ok: false, message: "فایل معتبر نیست." };
-          }
-          const settings: AppSettings = {
-            ...DEFAULT_SETTINGS,
-            ...(candidate.settings ?? {}),
-            notifications: {
-              ...DEFAULT_SETTINGS.notifications,
-              ...(candidate.settings?.notifications ?? {}),
-            },
-            gymDays: Array.isArray(candidate.settings?.gymDays)
-              ? candidate.settings.gymDays
-              : DEFAULT_SETTINGS.gymDays,
-          };
-          const days = candidate.days as Record<string, DayPlan>;
-          if (!days[todayKey()]) {
-            days[todayKey()] = emptyPlan(todayKey(), settings.defaultMode);
-          }
-          set({
-            seededAt: candidate.seededAt ?? new Date().toISOString(),
-            baselineLangHours:
-              typeof candidate.baselineLangHours === "number"
-                ? candidate.baselineLangHours
-                : 18,
-            settings,
-            days,
-            reviews: Array.isArray(candidate.reviews) ? candidate.reviews : [],
-            ideas: Array.isArray(candidate.ideas) ? candidate.ideas : [],
-            recoveries: Array.isArray(candidate.recoveries)
-              ? candidate.recoveries
-              : [],
-          });
-          applyThemeChoice(settings.theme);
+          const migrated = migrateData(parsed);
+          if (!migrated) return { ok: false, message: "فایل معتبر نیست." };
+          set(stamp(migrated));
+          applyThemeChoice(migrated.settings.theme);
           return { ok: true, message: "داده‌ها برگشتند." };
         } catch {
           return { ok: false, message: "خواندن فایل ممکن نشد." };
@@ -460,45 +423,33 @@ export const useAppStore = create<StoreState>()(
       },
 
       resetDemo: () => {
-        const fresh = createSeedData(new Date());
-        set(fresh);
+        const fresh = createAccountData(new Date(), get().profile);
+        set(stamp(fresh));
         applyThemeChoice(fresh.settings.theme);
       },
     }),
     {
       name: STORAGE_KEY,
-      version: 1,
-      storage: createJSONStorage(() => idbStorage),
+      version: 2,
+      storage: createJSONStorage(() => bootstrapStorage),
       partialize: (state) => ({
-        seededAt: state.seededAt,
-        baselineLangHours: state.baselineLangHours,
+        schemaVersion: state.schemaVersion,
+        updatedAt: state.updatedAt,
+        profile: state.profile,
         settings: state.settings,
+        categories: state.categories,
+        weekTemplate: state.weekTemplate,
         days: state.days,
         reviews: state.reviews,
         ideas: state.ideas,
         recoveries: state.recoveries,
+        seededAt: state.seededAt,
+        baselineLangHours: state.baselineLangHours,
       }),
+      migrate: (persisted) => migrateData(persisted) ?? createAccountData(),
       merge: (persisted, current) => {
-        const p = (persisted ?? {}) as Partial<AppData>;
-        return {
-          ...current,
-          ...p,
-          settings: {
-            ...DEFAULT_SETTINGS,
-            ...(p.settings ?? {}),
-            notifications: {
-              ...DEFAULT_SETTINGS.notifications,
-              ...(p.settings?.notifications ?? {}),
-            },
-            gymDays: Array.isArray(p.settings?.gymDays)
-              ? p.settings.gymDays
-              : DEFAULT_SETTINGS.gymDays,
-          },
-          days: p.days ?? current.days,
-          reviews: p.reviews ?? current.reviews,
-          ideas: p.ideas ?? current.ideas,
-          recoveries: p.recoveries ?? current.recoveries,
-        };
+        const migrated = migrateData(persisted);
+        return migrated ? { ...current, ...migrated } : current;
       },
       onRehydrateStorage: () => (state) => {
         if (state?.settings?.theme) applyThemeChoice(state.settings.theme);
