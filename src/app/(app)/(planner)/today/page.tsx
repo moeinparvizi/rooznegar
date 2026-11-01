@@ -693,7 +693,7 @@ export default function TodayPage() {
                 </div>
               )}
 
-              <Link href="/progress" className="journal-link">
+              <Link href="/progress/" className="journal-link">
                 <Bloom size={15} bare variant={2} />
                 دیدن باغ کامل
                 <Icon name="arrowLeft" size={13} />
@@ -730,7 +730,7 @@ export default function TodayPage() {
           <div className="surface mt-4 p-5">
             <div className="flex items-center justify-between">
               <span className="eyebrow">در یک نگاه</span>
-              <Link href="/progress" className="text-[10.5px] text-green hover:underline">
+              <Link href="/progress/" className="text-[10.5px] text-green hover:underline">
                 پیشرفت
               </Link>
             </div>

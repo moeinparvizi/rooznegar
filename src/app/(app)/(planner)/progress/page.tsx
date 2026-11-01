@@ -269,7 +269,7 @@ export default function ProgressPage() {
             <Icon name="play" size={14} />
             تمرین ۲۵ دقیقه‌ای
           </button>
-          <Link href="/me" className="btn btn-outline btn-sm">
+          <Link href="/me/" className="btn btn-outline btn-sm">
             <Icon name="target" size={14} />
             تنظیم هدف
           </Link>
@@ -656,7 +656,7 @@ export default function ProgressPage() {
           <span>
             {toFa(monthBlooms)} روز از ۲۸ روز، یک گل روییده.
           </span>
-          <Link href="/" className="inline-flex items-center gap-1.5 text-green hover:underline">
+          <Link href="/today/" className="inline-flex items-center gap-1.5 text-green hover:underline">
             نوشتن یک خط برای امروز
             <Icon name="arrowLeft" size={13} />
           </Link>

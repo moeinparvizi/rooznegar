@@ -9,7 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "روزنگار",
     description:
       "دفترِ روزهای تو؛ برنامه‌ای آرام که با واقعیت جابه‌جا می‌شود، هرگز صفرت نمی‌کند و هر روز یک گل به باغت اضافه می‌کند.",
-    start_url: "./",
+    start_url: "./today/",
     scope: "./",
     display: "standalone",
     orientation: "portrait-primary",

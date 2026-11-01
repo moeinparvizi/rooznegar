@@ -364,7 +364,7 @@ export default function WeekPage() {
           )}
 
           {selectedDay?.isToday && (
-            <Link href="/" className="btn btn-soft btn-sm mt-4">
+            <Link href="/today/" className="btn btn-soft btn-sm mt-4">
               <Icon name="today" size={14} />
               برگرد به امروز
             </Link>

@@ -12,15 +12,20 @@ import { Icon, type IconName } from "./Icon";
 import { LoadingScreen } from "./LoadingScreen";
 
 const NAV: { href: string; label: string; icon: IconName; hint: string }[] = [
-  { href: "/", label: "امروز", icon: "today", hint: "یک کار بزرگ" },
-  { href: "/week", label: "هفته", icon: "week", hint: "باغ هفت روز" },
-  { href: "/progress", label: "پیشرفت", icon: "progress", hint: "مسیر و ریتم" },
-  { href: "/me", label: "من", icon: "me", hint: "تنظیم‌ها" },
+  { href: "/today/", label: "امروز", icon: "today", hint: "یک کار بزرگ" },
+  { href: "/week/", label: "هفته", icon: "week", hint: "باغ هفت روز" },
+  { href: "/progress/", label: "پیشرفت", icon: "progress", hint: "مسیر و ریتم" },
+  { href: "/me/", label: "من", icon: "me", hint: "تنظیم‌ها" },
 ];
 
 function usePath() {
   const pathname = usePathname();
   return pathname.replace(/\/+$/, "") || "/";
+}
+
+function isActive(path: string, href: string) {
+  if (href === "/today/") return path === "/today";
+  return path === href.replace(/\/$/, "") || path.startsWith(href);
 }
 
 function ThemeToggle() {
@@ -61,7 +66,7 @@ function SideRailGarden() {
   const garden = gardenFor(days, today, 7);
   return (
     <Link
-      href="/progress"
+      href="/progress/"
       className="group block rounded-2xl border border-line bg-surface/60 p-4 transition-colors hover:bg-surface"
       style={{ borderColor: "var(--line)" }}
       aria-label="دیدن باغ روزها"
@@ -114,11 +119,12 @@ function SideRailGarden() {
 
 function SideRail() {
   const path = usePath();
+  const profile = useAppStore((s) => s.profile);
 
   return (
     <aside className="side-rail">
       <div className="flex items-center justify-between">
-        <Link href="/" aria-label="روزنگار، امروز" className="flex items-center gap-2.5">
+        <Link href="/today/" aria-label="روزنگار، امروز" className="flex items-center gap-2.5">
           <span style={{ color: "var(--green)" }}>
             <BrandMark size={30} />
           </span>
@@ -134,8 +140,7 @@ function SideRail() {
 
       <nav aria-label="پیمایش اصلی" className="flex flex-col gap-1">
         {NAV.map((item) => {
-          const active =
-            item.href === "/" ? path === "/" : path.startsWith(item.href);
+          const active = isActive(path, item.href);
           return (
             <Link
               key={item.href}
@@ -169,12 +174,12 @@ function SideRail() {
         <SideRailGarden />
         <div className="px-1">
           <p className="text-[11.5px] leading-6 text-muted">
-            هر روز فقط یک کار بزرگ.
+            {profile.name ? `باغ ${profile.name}` : "باغ تو"}
             <br />
-            هیچ روزی صفر نیست.
+            هر روز فقط یک کار بزرگ.
           </p>
           <p className="mt-2 text-[10px] text-faint">
-            نسخه‌ی شخصی · بدون حساب
+            حساب شخصی · آفلاین‌محور
           </p>
         </div>
       </div>
@@ -190,7 +195,7 @@ function MobileTopBar() {
 
   return (
     <header className="mobile-topbar">
-      <Link href="/" className="flex items-center gap-2" aria-label="روزنگار">
+      <Link href="/today/" className="flex items-center gap-2" aria-label="روزنگار">
         <span style={{ color: "var(--green)" }}>
           <BrandMark size={23} />
         </span>
@@ -218,8 +223,7 @@ function MobileTabBar() {
   return (
     <nav className="mobile-tabbar" aria-label="پیمایش اصلی">
       {NAV.map((item) => {
-        const active =
-          item.href === "/" ? path === "/" : path.startsWith(item.href);
+        const active = isActive(path, item.href);
         return (
           <Link
             key={item.href}
