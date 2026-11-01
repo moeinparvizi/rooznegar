@@ -27,6 +27,9 @@ jobs:
       - run: npm install --no-audit --no-fund
       - uses: actions/configure-pages@v5
       - run: NEXT_PUBLIC_BASE_PATH=/rooznegar npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out
