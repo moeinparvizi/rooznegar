@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideSync } from "./decide";
+import { decideSync, remoteStamp } from "./decide";
 
 const local = { updatedAt: "2026-11-01T10:00:00.000Z" };
 
@@ -30,5 +30,34 @@ describe("decideSync", () => {
         { updatedAt: "2026-11-01T11:00:00.000Z" },
       ),
     ).toBe("pull");
+  });
+});
+
+describe("remoteStamp", () => {
+  it("reads the stamp from a jsonb payload", () => {
+    expect(
+      remoteStamp({
+        data: { updatedAt: "2026-11-01T10:00:00.000Z" },
+        updatedAt: "2026-11-01T10:00:02.000Z",
+      }),
+    ).toBe("2026-11-01T10:00:00.000Z");
+  });
+
+  it("reads the stamp from a stringified payload", () => {
+    expect(
+      remoteStamp({
+        data: JSON.stringify({ updatedAt: "2026-11-01T10:00:00.000Z" }),
+        updatedAt: "2026-11-01T10:00:02.000Z",
+      }),
+    ).toBe("2026-11-01T10:00:00.000Z");
+  });
+
+  it("falls back to the server column without a usable payload stamp", () => {
+    expect(remoteStamp({ data: { days: {} }, updatedAt: "2026-11-01T10:00:00.000Z" })).toBe(
+      "2026-11-01T10:00:00.000Z",
+    );
+    expect(remoteStamp({ data: "not json", updatedAt: "2026-11-01T10:00:00.000Z" })).toBe(
+      "2026-11-01T10:00:00.000Z",
+    );
   });
 });

@@ -14,10 +14,11 @@ import { getAuthClient } from "@/lib/auth";
 import { migrateData } from "@/lib/migrate";
 import { useAppStore } from "@/lib/store";
 import { useUIStore } from "@/lib/ui-store";
-import { decideSync } from "@/lib/sync/decide";
+import { decideSync, remoteStamp } from "@/lib/sync/decide";
 import {
   createSupabaseTransport,
   SyncError,
+  type RemoteRow,
   type SyncTransport,
 } from "@/lib/sync/transport";
 
@@ -96,6 +97,32 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     [offline, showToast],
   );
 
+  const applyRemote = useCallback(
+    async (remote: RemoteRow) => {
+      const migrated = migrateData({
+        app: "rooznegar",
+        version: 2,
+        data: remote.data,
+      });
+      if (!migrated) {
+        setStatus("error");
+        return;
+      }
+      const wasDirty = dirty.current;
+      applying.current = true;
+      const accepted = useAppStore.getState().replaceFromRemote(migrated);
+      applying.current = false;
+      if (!accepted) {
+        setStatus("error");
+        return;
+      }
+      dirty.current = false;
+      if (wasDirty) showToast("نسخه‌ی جدیدتر از دستگاه دیگر آمد.");
+      setStatus("synced");
+    },
+    [showToast],
+  );
+
   const pull = useCallback(async () => {
     if (!transport || !userId) return;
     const state = useAppStore.getState();
@@ -110,26 +137,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         : decideSync(state, remote);
       if (seeded) useAppStore.setState({ seededLocally: false });
       if (decision === "pull" && remote) {
-        const migrated = migrateData({
-          app: "rooznegar",
-          version: 2,
-          data: remote.data,
-        });
-        if (!migrated) {
-          setStatus("error");
-          return;
-        }
-        const wasDirty = dirty.current;
-        applying.current = true;
-        const accepted = useAppStore.getState().replaceFromRemote(migrated);
-        applying.current = false;
-        if (!accepted) {
-          setStatus("error");
-          return;
-        }
-        dirty.current = false;
-        if (wasDirty) showToast("نسخه‌ی جدیدتر از دستگاه دیگر آمد.");
-        setStatus("synced");
+        await applyRemote(remote);
         return;
       }
       if (decision === "push") {
@@ -142,20 +150,29 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       fail(error);
     }
-  }, [transport, userId, showToast, fail]);
+  }, [transport, userId, applyRemote, fail]);
 
   const push = useCallback(async () => {
     if (!transport || !userId) return;
     const state = useAppStore.getState();
     try {
       setStatus("syncing");
+      const remote = await transport.pull(userId);
+      if (
+        remote &&
+        (state.seededLocally ||
+          decideSync(state, { updatedAt: remoteStamp(remote) }) === "pull")
+      ) {
+        await applyRemote(remote);
+        return;
+      }
       await transport.push(userId, snapshot(state));
       dirty.current = false;
       setStatus("synced");
     } catch (error) {
       fail(error);
     }
-  }, [transport, userId, fail]);
+  }, [transport, userId, applyRemote, fail]);
 
   const pullRef = useRef(pull);
   const pushRef = useRef(push);
