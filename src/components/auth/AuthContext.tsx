@@ -10,7 +10,12 @@ import {
   useSyncExternalStore,
 } from "react";
 import { getAuthClient } from "@/lib/auth";
-import type { AuthClient, AuthSession, AuthUser } from "@/lib/auth/types";
+import type {
+  AuthClient,
+  AuthEvent,
+  AuthSession,
+  AuthUser,
+} from "@/lib/auth/types";
 
 type AuthStatus = "loading" | "signedOut" | "signedIn" | "unavailable";
 
@@ -19,7 +24,9 @@ interface AuthContextValue {
   user: AuthUser | null;
   offline: boolean;
   client: AuthClient;
+  recovering: boolean;
   refresh: () => Promise<void>;
+  endRecovery: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -40,6 +47,7 @@ function offlineSnapshot() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [client] = useState<AuthClient>(() => getAuthClient());
   const [session, setSession] = useState<AuthSession>(null);
+  const [recovering, setRecovering] = useState(false);
   const [status, setStatus] = useState<AuthStatus>(() =>
     client.configured ? "loading" : "unavailable",
   );
@@ -50,11 +58,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const apply = useCallback(
-    (next: AuthSession) => {
+    (next: AuthSession, event?: AuthEvent) => {
       setSession(next);
       setStatus(
         client.configured ? (next ? "signedIn" : "signedOut") : "unavailable",
       );
+      if (event === "passwordRecovery") setRecovering(true);
+      if (event === "signedOut" || !next) setRecovering(false);
     },
     [client],
   );
@@ -79,8 +89,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {
         if (alive) apply(null);
       });
-    const unsubscribe = client.onChange((next) => {
-      if (alive) apply(next);
+    const unsubscribe = client.onChange((next, event) => {
+      if (alive) apply(next, event);
     });
     return () => {
       alive = false;
@@ -89,8 +99,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [apply, client]);
 
   const value = useMemo(
-    () => ({ status, user: session?.user ?? null, offline, client, refresh }),
-    [status, session, offline, client, refresh],
+    () => ({
+      status,
+      user: session?.user ?? null,
+      offline,
+      client,
+      recovering,
+      refresh,
+      endRecovery: () => setRecovering(false),
+    }),
+    [status, session, offline, client, recovering, refresh],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

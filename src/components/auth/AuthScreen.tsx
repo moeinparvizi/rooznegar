@@ -12,6 +12,7 @@ import {
 import { BrandMark, BrandWord } from "@/components/Brand";
 import { Icon } from "@/components/Icon";
 import { toEnDigits, toFa } from "@/lib/jalali";
+import { deliveryFor, linkNotice } from "@/lib/auth/delivery";
 import { safeNext } from "@/lib/auth/safe-next";
 import type { AuthIntent, AuthResult } from "@/lib/auth/types";
 import { useAuth } from "./AuthContext";
@@ -19,7 +20,7 @@ import { CodeInput } from "./CodeInput";
 
 type Tab = "signin" | "signup";
 type Method = "code" | "password";
-type Step = "form" | "code" | "recovery" | "new-password";
+type Step = "form" | "code" | "link" | "recovery" | "new-password";
 
 const MIN_PASSWORD = 8;
 
@@ -38,7 +39,7 @@ export function AuthScreen() {
   const params = useSearchParams();
   const nextParam = params.get("next");
   const reason = params.get("reason");
-  const { status, client } = useAuth();
+  const { status, client, recovering, endRecovery } = useAuth();
 
   const [tab, setTab] = useState<Tab>(() =>
     params.get("mode") === "signup" ? "signup" : "signin",
@@ -50,6 +51,7 @@ export function AuthScreen() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [code, setCode] = useState("");
+  const [codeHint, setCodeHint] = useState("کد را وارد کن.");
   const [codeKey, setCodeKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,14 +67,17 @@ export function AuthScreen() {
 
   const unavailable = mounted && !client.configured;
   const demo = mounted && client.kind === "demo";
+  const link = deliveryFor(client.kind) === "link";
   const emailValue = normalized(email);
   const needsPassword = tab === "signup" || method === "password";
 
+  const activeStep: Step = recovering && status === "signedIn" ? "new-password" : step;
+
   useEffect(() => {
-    if (status === "signedIn" && !recoveryRef.current) {
+    if (status === "signedIn" && !recovering && !recoveryRef.current) {
       router.replace(safeNext(nextParam));
     }
-  }, [status, nextParam, router]);
+  }, [status, recovering, nextParam, router]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -125,11 +130,12 @@ export function AuthScreen() {
 
   const beginCodeStep = (nextIntent: AuthIntent, message: string) => {
     setIntent(nextIntent);
-    setStep("code");
+    setCodeHint(message);
+    setStep(link ? "link" : "code");
     setCode("");
     setCodeKey((value) => value + 1);
     setCooldown(45);
-    setNotice(message);
+    setNotice(link ? linkNotice(nextIntent) : message);
   };
 
   const requestSigninCode = () =>
@@ -199,7 +205,7 @@ export function AuthScreen() {
       setCode("");
       setCodeKey((value) => value + 1);
       setCooldown(45);
-      setNotice("کد تازه فرستاده شد.");
+      setNotice(link ? linkNotice(intent) : "کد تازه فرستاده شد.");
     });
 
   const savePassword = () =>
@@ -208,6 +214,7 @@ export function AuthScreen() {
       const result = await client.updatePassword(password);
       if (!take(result)) return;
       recoveryRef.current = false;
+      endRecovery();
       setNotice("رمز تازه ذخیره شد.");
       router.replace(safeNext(nextParam));
     });
@@ -296,7 +303,7 @@ export function AuthScreen() {
           </div>
         )}
 
-        {step === "form" && (
+        {activeStep === "form" && (
           <>
             <div className="auth-tabs mt-5" role="tablist" aria-label="ورود یا ساخت حساب">
               <button
@@ -328,7 +335,7 @@ export function AuthScreen() {
                   data-active={method === "code"}
                   onClick={() => switchMethod("code")}
                 >
-                  کد ایمیلی
+                  {link ? "لینک ایمیلی" : "کد ایمیلی"}
                 </button>
                 <button
                   type="button"
@@ -426,7 +433,9 @@ export function AuthScreen() {
                   : tab === "signup"
                     ? "ساخت حساب"
                     : method === "code"
-                      ? "فرستادن کد ورود"
+                      ? link
+                        ? "فرستادن لینک ورود"
+                        : "فرستادن کد ورود"
                       : "ورود"}
               </button>
 
@@ -446,15 +455,16 @@ export function AuthScreen() {
 
               {tab === "signup" && (
                 <p className="auth-hint auth-center">
-                  برای تایید، یک کد شش‌رقمی به ایمیلت می‌فرستیم. حساب بدون
-                  تایید فعال نمی‌شود.
+                  {link
+                    ? "برای تایید، یک لینک به ایمیلت می‌فرستیم. حساب بدون تایید فعال نمی‌شود."
+                    : "برای تایید، یک کد شش‌رقمی به ایمیلت می‌فرستیم. حساب بدون تایید فعال نمی‌شود."}
                 </p>
               )}
             </form>
           </>
         )}
 
-        {step === "recovery" && (
+        {activeStep === "recovery" && (
           <form
             className="auth-form mt-6"
             onSubmit={(event) => {
@@ -470,7 +480,9 @@ export function AuthScreen() {
               <div>
                 <h2 className="auth-step-title">بازیابی رمز</h2>
                 <p className="auth-hint">
-                  ایمیل حسابت را بنویس؛ کد تایید می‌فرستیم.
+                  {link
+                    ? "ایمیل حسابت را بنویس؛ لینک بازیابی می‌فرستیم."
+                    : "ایمیل حسابت را بنویس؛ کد تایید می‌فرستیم."}
                 </p>
               </div>
             </div>
@@ -506,7 +518,11 @@ export function AuthScreen() {
               className="btn btn-primary auth-submit"
               disabled={busy || unavailable}
             >
-              {busy ? "یک لحظه…" : "فرستادن کد بازیابی"}
+              {busy
+                ? "یک لحظه…"
+                : link
+                  ? "فرستادن لینک بازیابی"
+                  : "فرستادن کد بازیابی"}
             </button>
             <button
               type="button"
@@ -519,7 +535,7 @@ export function AuthScreen() {
           </form>
         )}
 
-        {step === "code" && (
+        {activeStep === "code" && (
           <div className="auth-form mt-6">
             <div className="auth-step-head">
               <span className="auth-step-icon">
@@ -595,7 +611,73 @@ export function AuthScreen() {
           </div>
         )}
 
-        {step === "new-password" && (
+        {activeStep === "link" && (
+          <div className="auth-form mt-6">
+            <div className="auth-step-head">
+              <span className="auth-step-icon">
+                <Icon name="mail" size={19} />
+              </span>
+              <div>
+                <h2 className="auth-step-title">ایمیلت را باز کن</h2>
+                <p className="auth-hint">
+                  به <b dir="ltr">{emailValue}</b> فرستادیم.
+                </p>
+              </div>
+            </div>
+
+            {notice && (
+              <p className="auth-notice" role="status">
+                {notice}
+              </p>
+            )}
+
+            {error && (
+              <p className="auth-error" role="alert">
+                {error}
+              </p>
+            )}
+
+            <p className="auth-hint mt-4">
+              لینک را در همان مرورگری باز کن که اینجا هستی. وقتی بازش کنی، همین
+              صفحه تو را وارد می‌کند.
+            </p>
+
+            <div className="auth-code-actions">
+              <button
+                type="button"
+                className="auth-link"
+                onClick={() => void resend()}
+                disabled={busy || cooldown > 0}
+              >
+                {cooldown > 0
+                  ? `ارسال دوباره در ${toFa(cooldown)}`
+                  : "فرستادن دوباره‌ی ایمیل"}
+              </button>
+              <button
+                type="button"
+                className="auth-link"
+                onClick={() => {
+                  setStep("code");
+                  setNotice(codeHint);
+                  setError(null);
+                }}
+                disabled={busy}
+              >
+                کد شش‌رقمی داری؟
+              </button>
+              <button
+                type="button"
+                className="auth-link"
+                onClick={backToForm}
+                disabled={busy}
+              >
+                تغییر ایمیل
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeStep === "new-password" && (
           <form
             className="auth-form mt-6"
             onSubmit={(event) => {

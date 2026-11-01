@@ -1,5 +1,6 @@
 import { createClient, type User } from "@supabase/supabase-js";
 import { BASE_PATH } from "@/lib/site";
+import { mapAuthEvent } from "./delivery";
 import { mapAuthError } from "./errors";
 import type {
   AuthClient,
@@ -47,7 +48,7 @@ export function createSupabaseAuth(url: string, anonKey: string): AuthClient {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: false,
+      detectSessionInUrl: true,
       storageKey: "rz-supabase-auth",
     },
   });
@@ -84,8 +85,8 @@ export function createSupabaseAuth(url: string, anonKey: string): AuthClient {
     },
 
     onChange(callback) {
-      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-        callback(mapSession(session));
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        callback(mapSession(session), mapAuthEvent(event));
       });
       return () => data.subscription.unsubscribe();
     },

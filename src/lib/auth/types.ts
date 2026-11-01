@@ -10,6 +10,13 @@ export interface AuthUser {
 
 export type AuthSession = { user: AuthUser } | null;
 
+export type AuthEvent =
+  | "initial"
+  | "signedIn"
+  | "signedOut"
+  | "passwordRecovery"
+  | "other";
+
 export type AuthErrorCode =
   | "invalid_credentials"
   | "email_unconfirmed"
@@ -36,7 +43,9 @@ export interface AuthClient {
   configured: boolean;
   getSession(): Promise<AuthSession>;
   getAccessToken(): Promise<string | null>;
-  onChange(callback: (session: AuthSession) => void): () => void;
+  onChange(
+    callback: (session: AuthSession, event: AuthEvent) => void,
+  ): () => void;
   signInWithCode(email: string): Promise<AuthResult>;
   signUpWithPassword(email: string, password: string): Promise<AuthResult>;
   signInWithPassword(email: string, password: string): Promise<AuthResult>;

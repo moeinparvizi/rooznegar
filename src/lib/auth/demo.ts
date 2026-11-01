@@ -1,5 +1,6 @@
 import type {
   AuthClient,
+  AuthEvent,
   AuthIntent,
   AuthResult,
   AuthSession,
@@ -25,7 +26,7 @@ interface PendingCode {
 }
 
 let pending: PendingCode | null = null;
-const listeners = new Set<(session: AuthSession) => void>();
+const listeners = new Set<(session: AuthSession, event: AuthEvent) => void>();
 
 function readUsers(): DemoUser[] {
   try {
@@ -62,7 +63,9 @@ function readSessionSync(): AuthSession {
 
 function emit() {
   const session = readSessionSync();
-  listeners.forEach((listener) => listener(session));
+  listeners.forEach((listener) =>
+    listener(session, session ? "signedIn" : "signedOut"),
+  );
 }
 
 function startSession(user: DemoUser) {
