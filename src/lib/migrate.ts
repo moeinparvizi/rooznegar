@@ -28,8 +28,23 @@ function unwrap(raw: unknown): Rec | null {
   return raw;
 }
 
-const PALETTES = new Set(["garden", "paper", "night", "ocean", "clay", "sky"]);
-const ACCENTS = new Set(["green", "blue", "olive", "tea", "amber"]);
+const PALETTES = new Set([
+  "garden",
+  "paper",
+  "night",
+  "ocean",
+  "clay",
+  "sky",
+  "dracula",
+]);
+const ACCENTS = new Set([
+  "green",
+  "blue",
+  "olive",
+  "tea",
+  "amber",
+  "violet",
+]);
 const TEMPLATES = new Set([
   "programmer",
   "athlete",
@@ -76,6 +91,15 @@ function normalizeSettings(raw: unknown): AppSettingsV2 {
           ]),
         ),
       } as AppSettingsV2["modules"];
+    } else if (isRecord(raw)) {
+      // A plan written before modules existed already shows language, gym and
+      // linkedin, so switching those modules off would silently delete blocks.
+      out.modules = {
+        ...DEFAULT_SETTINGS_V2.modules,
+        cefr: true,
+        linkedin: true,
+        gym: true,
+      };
     }
     if (Array.isArray(raw.gymDays)) {
       out.gymDays = raw.gymDays.filter((d): d is number => typeof d === "number");
@@ -91,9 +115,8 @@ function normalizeSettings(raw: unknown): AppSettingsV2 {
   if (!TEMPLATES.has(String(out.templateId))) out.templateId = "programmer";
   if (!GARDEN_RULES.has(String(out.gardenRule))) out.gardenRule = "one";
   if (!BLOOM_STYLES.has(String(out.bloomStyle))) out.bloomStyle = "auto";
-  if (!Number.isFinite(out.lateShiftMinutes) || out.lateShiftMinutes < 15) {
-    out.lateShiftMinutes = 60;
-  }
+  if (!Number.isFinite(out.lateShiftMinutes)) out.lateShiftMinutes = 60;
+  out.lateShiftMinutes = Math.min(180, Math.max(15, out.lateShiftMinutes));
   return out as AppSettingsV2;
 }
 

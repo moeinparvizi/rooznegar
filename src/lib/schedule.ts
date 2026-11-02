@@ -1,5 +1,6 @@
-import { MUSCLE_ROTATION, isGrowthCategory } from "./categories";
+import { MUSCLE_ROTATION, filterByModules, isGrowthCategory } from "./categories";
 import {
+  formatTime,
   minutesBetween,
   minutesToTime,
   nextWeekdayKey,
@@ -90,14 +91,9 @@ export function getModeWindow(settings: AppSettings | AppSettingsV2, mode: Mode)
   };
 }
 
-export function modeHourLabel(value: string): string {
-  const hour = Number(value.split(":")[0]);
-  return toFa(hour);
-}
-
 export function modeLabel(settings: AppSettings, mode: Mode): string {
   const w = getModeWindow(settings, mode);
-  return `${mode === "early" ? "زود" : "دیر"} · ${modeHourLabel(w.start)} تا ${modeHourLabel(w.end)}`;
+  return `${mode === "early" ? "زود" : "دیر"} · ${formatTime(w.start)} تا ${formatTime(w.end)}`;
 }
 
 export function muscleForDate(
@@ -714,6 +710,11 @@ export function buildLegacyDaySchedule(
     (a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime),
   );
 
+  // v1 settings carry no modules, and every block of such a plan stays visible.
+  const modules = (settings as Partial<AppSettingsV2>).modules;
+  blocks = filterByModules(blocks, modules);
+  recoverable = filterByModules(recoverable, modules);
+
   const bigTask = blocks.find((b) => b.core && b.category === "programming") ??
     blocks.find((b) => b.core) ??
     null;
@@ -812,9 +813,13 @@ export function buildDaySchedule(
 ): DaySchedule {
   const mode = preferredMode ?? settings.defaultMode;
   const index = weekdayIndexFromKey(dateKey) as WeekdayIndex;
-  const templateBlocks = template
-    ? (template[index]?.blocks ?? [])
-    : legacyWeekTemplate(settings)[index].blocks;
+  const templateBlocks = filterByModules(
+    template
+      ? (template[index]?.blocks ?? [])
+      : legacyWeekTemplate(settings)[index].blocks,
+    settings.modules,
+    categories,
+  );
   const shift =
     mode === "late" ? Math.max(0, settings.lateShiftMinutes || 0) : 0;
   const blocks: Task[] = [];

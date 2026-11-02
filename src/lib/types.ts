@@ -126,8 +126,15 @@ export interface AppData {
   recoveries: Recovery[];
 }
 
-export type PaletteId = "garden" | "paper" | "night" | "ocean" | "clay" | "sky";
-export type AccentId = "green" | "blue" | "olive" | "tea" | "amber";
+export type PaletteId =
+  | "garden"
+  | "paper"
+  | "night"
+  | "ocean"
+  | "clay"
+  | "sky"
+  | "dracula";
+export type AccentId = "green" | "blue" | "olive" | "tea" | "amber" | "violet";
 export type TemplateId =
   | "programmer"
   | "athlete"

@@ -1,6 +1,46 @@
 import type { IconName } from "@/components/Icon";
 import { CATEGORY_TONES } from "./palettes";
-import type { Category, CategoryDef, CategoryTone } from "./types";
+import type {
+  Category,
+  CategoryDef,
+  CategoryTone,
+  ModuleId,
+  Modules,
+} from "./types";
+
+export const MODULE_ADDON_CATEGORIES: Partial<Record<ModuleId, string>> = {
+  cefr: "language",
+  gym: "gym",
+  linkedin: "linkedin",
+};
+
+function moduleForCategory(
+  categoryId: string,
+  categories?: readonly CategoryDef[],
+): ModuleId | undefined {
+  if (categories?.length) {
+    return categoryDef(categoryId, categories).module;
+  }
+  const match = (
+    Object.entries(MODULE_ADDON_CATEGORIES) as [ModuleId, string][]
+  ).find(([, category]) => category === categoryId);
+  return match?.[0];
+}
+
+export function filterByModules<T extends { category?: string; categoryId?: string }>(
+  blocks: readonly T[],
+  modules?: Modules,
+  categories?: readonly CategoryDef[],
+): T[] {
+  if (!modules) return [...blocks];
+  return blocks.filter((block) => {
+    const moduleId = moduleForCategory(
+      block.category ?? block.categoryId ?? "",
+      categories,
+    );
+    return !moduleId || modules[moduleId];
+  });
+}
 
 export const BUILTIN_CATEGORIES: CategoryDef[] = [
   { id: "work", label: "کار", short: "کار", icon: "list", tone: "stone", builtin: true },

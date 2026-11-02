@@ -1,9 +1,18 @@
-import { BUILTIN_CATEGORIES, MUSCLE_ROTATION } from "./categories";
+import {
+  BUILTIN_CATEGORIES,
+  MODULE_ADDON_CATEGORIES,
+  MUSCLE_ROTATION,
+  categoryDef,
+  filterByModules,
+} from "./categories";
+import { DEFAULT_SETTINGS_V2 } from "./defaults";
 import { minutesToTime, shiftTime, timeToMinutes, todayKey } from "./jalali";
 import { legacyWeekTemplate } from "./schedule";
 import type {
   AppSettingsV2,
   CategoryDef,
+  ModuleId,
+  Modules,
   Priority,
   TemplateBlock,
   TemplateId,
@@ -44,22 +53,6 @@ export const TEMPLATE_PRESETS: TemplatePreset[] = [
     description: "چند بلوک روشن؛ کار، یک بلوک رشد و استراحت.",
   },
 ];
-
-const PRESET_CATEGORY_IDS: Record<Exclude<TemplateId, "custom">, string[]> = {
-  programmer: [
-    "work",
-    "commute",
-    "language",
-    "programming",
-    "gym",
-    "linkedin",
-    "rest",
-  ],
-  athlete: ["training", "rest", "work"],
-  tailor: ["craft", "work", "study", "rest"],
-  student: ["study", "language", "work", "rest"],
-  simple: ["work", "study", "rest"],
-};
 
 interface BlockOptions {
   priority?: Priority;
@@ -336,6 +329,20 @@ function wakeDelta(settings: AppSettingsV2): number {
   return Math.max(-45, Math.min(60, Math.round(delta / 15) * 15));
 }
 
+function withOneCorePerDay(blocks: TemplateBlock[]): TemplateBlock[] {
+  if (blocks.length === 0 || blocks.some((block) => block.core)) return blocks;
+  const ordinary = blocks.filter(
+    (block) => !categoryDef(block.categoryId, BUILTIN_CATEGORIES).rest,
+  );
+  const anchor =
+    ordinary.find((block) => block.priority === 1) ??
+    ordinary[0] ??
+    blocks[0];
+  return blocks.map((block) =>
+    block.id === anchor.id ? { ...block, core: true } : block,
+  );
+}
+
 export function presetWeekTemplate(
   templateId: TemplateId,
   settings: AppSettingsV2,
@@ -357,25 +364,115 @@ export function presetWeekTemplate(
             ? studentDay(day)
             : simpleDay(day);
     template[day] = {
-      blocks: packDay(shiftDay(blocks, delta)),
+      blocks: withOneCorePerDay(
+        filterByModules(packDay(shiftDay(blocks, delta)), settings.modules),
+      ),
     };
   }
   return template;
 }
 
+function donorTemplateId(settings: AppSettingsV2): Exclude<TemplateId, "custom"> {
+  return settings.templateId === "custom"
+    ? "programmer"
+    : (settings.templateId as Exclude<TemplateId, "custom">);
+}
+
+export function applyModuleBlocks(
+  template: WeekTemplate,
+  settings: AppSettingsV2,
+  moduleId: ModuleId,
+): WeekTemplate {
+  const categoryId = MODULE_ADDON_CATEGORIES[moduleId];
+  if (!categoryId || !settings.modules[moduleId]) return template;
+  const donor = presetWeekTemplate(donorTemplateId(settings), {
+    ...settings,
+    modules: { ...settings.modules, [moduleId]: true } as Modules,
+  });
+  const out = {} as WeekTemplate;
+  for (let index = 0; index < 7; index += 1) {
+    const day = index as WeekdayIndex;
+    const existing = template[day]?.blocks ?? [];
+    const additions = donor[day].blocks.filter(
+      (block) =>
+        block.categoryId === categoryId &&
+        !existing.some((item) => item.id === block.id),
+    );
+    out[day] = {
+      blocks: [...existing, ...additions].sort((a, b) =>
+        timeToMinutes(a.start) - timeToMinutes(b.start),
+      ),
+    };
+  }
+  return out;
+}
+
+export const GENERATED_GYM_BLOCK_ID = "gym";
+
+export function syncGymBlocks(
+  template: WeekTemplate,
+  settings: AppSettingsV2,
+  days: number[],
+): WeekTemplate {
+  const before = new Set(settings.gymDays);
+  const after = new Set(days);
+  const donor = presetWeekTemplate(donorTemplateId(settings), {
+    ...settings,
+    gymDays: days,
+    modules: { ...settings.modules, gym: true } as Modules,
+  });
+  const out = {} as WeekTemplate;
+  for (let index = 0; index < 7; index += 1) {
+    const day = index as WeekdayIndex;
+    const existing = template[day]?.blocks ?? [];
+    if (before.has(index) && !after.has(index)) {
+      out[day] = {
+        blocks: existing.filter(
+          (block) =>
+            block.categoryId !== "gym" ||
+            block.id !== GENERATED_GYM_BLOCK_ID,
+        ),
+      };
+      continue;
+    }
+    if (after.has(index) && !before.has(index)) {
+      const additions = donor[day].blocks.filter(
+        (block) =>
+          block.categoryId === "gym" &&
+          !existing.some((item) => item.id === block.id),
+      );
+      out[day] = {
+        blocks: [...existing, ...additions].sort((a, b) =>
+          timeToMinutes(a.start) - timeToMinutes(b.start),
+        ),
+      };
+      continue;
+    }
+    out[day] = { blocks: existing };
+  }
+  return out;
+}
+
 export function presetCategoryIds(
   templateId: TemplateId,
+  settings: AppSettingsV2 = DEFAULT_SETTINGS_V2,
 ): string[] {
   if (templateId === "custom") return [];
-  return PRESET_CATEGORY_IDS[templateId];
+  const used = new Set(
+    Object.values(presetWeekTemplate(templateId, settings)).flatMap((day) =>
+      day.blocks.map((block) => block.categoryId),
+    ),
+  );
+  return [...used];
 }
 
 export function ensurePresetCategories(
   templateId: TemplateId,
   categories: readonly CategoryDef[],
+  settings: AppSettingsV2 = DEFAULT_SETTINGS_V2,
 ): CategoryDef[] {
   const out = categories.map((category) => ({ ...category }));
-  const required = new Set(presetCategoryIds(templateId));
+  const required = new Set(presetCategoryIds(templateId, settings));
   for (const category of BUILTIN_CATEGORIES) {
     if (!required.has(category.id)) continue;
     if (out.some((item) => item.id === category.id)) continue;

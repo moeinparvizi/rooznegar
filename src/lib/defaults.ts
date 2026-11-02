@@ -29,9 +29,9 @@ export const DEFAULT_SETTINGS_V2: AppSettingsV2 = {
   lateShiftMinutes: 60,
   templateId: "programmer",
   modules: {
-    cefr: true,
-    linkedin: true,
-    gym: true,
+    cefr: false,
+    linkedin: false,
+    gym: false,
     journal: true,
     focus: true,
     garden: true,
@@ -41,6 +41,8 @@ export const DEFAULT_SETTINGS_V2: AppSettingsV2 = {
   gardenRule: "one",
   bloomStyle: "auto",
   workdays: [0, 1, 2, 3, 4],
+  // The gym plan is the user's own: no sessions until they pick the days.
+  gymDays: [],
 };
 
 export const STORAGE_KEY = "rooznegar-v2";

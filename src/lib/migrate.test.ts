@@ -75,6 +75,49 @@ describe("migrateData", () => {
     expect(second?.weekTemplate[2].blocks.length).toBeGreaterThan(0);
   });
 
+  it("keeps legacy modules on so old plans do not lose blocks", () => {
+    const data = migrateData(v1(), now);
+    expect(data?.settings.modules.cefr).toBe(true);
+    expect(data?.settings.modules.linkedin).toBe(true);
+    expect(data?.settings.modules.gym).toBe(true);
+  });
+
+  it("accepts the dracula palette and its violet accent", () => {
+    const first = migrateData(v1(), now);
+    const data = migrateData(
+      {
+        ...first,
+        settings: { ...first?.settings, palette: "dracula", accent: "violet" },
+      },
+      now,
+    );
+    expect(data?.settings.palette).toBe("dracula");
+    expect(data?.settings.accent).toBe("violet");
+  });
+
+  it("keeps the late shift the user dialled in", () => {
+    const first = migrateData(v1(), now);
+    const data = migrateData(
+      { ...first, settings: { ...first?.settings, lateShiftMinutes: 90 } },
+      now,
+    );
+    expect(data?.settings.lateShiftMinutes).toBe(90);
+  });
+
+  it("clamps a late shift outside the dial", () => {
+    const first = migrateData(v1(), now);
+    const tooBig = migrateData(
+      { ...first, settings: { ...first?.settings, lateShiftMinutes: 900 } },
+      now,
+    );
+    expect(tooBig?.settings.lateShiftMinutes).toBe(180);
+    const tooSmall = migrateData(
+      { ...first, settings: { ...first?.settings, lateShiftMinutes: 3 } },
+      now,
+    );
+    expect(tooSmall?.settings.lateShiftMinutes).toBe(15);
+  });
+
   it("merges new builtin categories into persisted lists", () => {
     const first = migrateData(v1(), now);
     const data = migrateData(

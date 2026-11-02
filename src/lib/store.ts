@@ -11,7 +11,12 @@ import { todayKey, toFa } from "./jalali";
 import { defaultWeekTemplate, migrateData } from "./migrate";
 import { suggestCompensationDate } from "./schedule";
 import { bootstrapStorage } from "./storage";
-import { ensurePresetCategories, presetWeekTemplate } from "./templates";
+import {
+  applyModuleBlocks,
+  ensurePresetCategories,
+  presetWeekTemplate,
+  syncGymBlocks,
+} from "./templates";
 import type { IconName } from "@/components/Icon";
 import type {
   AppDataV2,
@@ -22,6 +27,7 @@ import type {
   DayPlan,
   LinkedInIdea,
   Mode,
+  ModuleId,
   Profile,
   Recovery,
   Task,
@@ -93,6 +99,8 @@ interface StoreState extends AppDataV2 {
   scheduleIdea: (id: string) => void;
   removeIdea: (id: string) => void;
   updateSettings: (patch: Partial<AppSettingsV2>) => void;
+  toggleModule: (moduleId: ModuleId) => void;
+  setGymDays: (days: number[]) => void;
   setTheme: (theme: ThemeChoice) => void;
   addCategory: (input: CategoryInput) => string;
   updateCategory: (
@@ -476,8 +484,46 @@ export const useAppStore = create<StoreState>()(
         set(
           stamp({
             settings,
-            categories: ensurePresetCategories(templateId, state.categories),
+            categories: ensurePresetCategories(templateId, state.categories, settings),
             weekTemplate: presetWeekTemplate(templateId, settings),
+          }),
+        );
+      },
+
+      toggleModule: (moduleId) => {
+        const state = get();
+        const settings: AppSettingsV2 = {
+          ...state.settings,
+          modules: {
+            ...state.settings.modules,
+            [moduleId]: !state.settings.modules[moduleId],
+          },
+        };
+        set(
+          stamp({
+            settings,
+            weekTemplate: applyModuleBlocks(
+              state.weekTemplate,
+              settings,
+              moduleId,
+            ),
+          }),
+        );
+      },
+
+      setGymDays: (days) => {
+        const state = get();
+        const settings: AppSettingsV2 = {
+          ...state.settings,
+          gymDays: days,
+          gymPerWeek: days.length,
+        };
+        set(
+          stamp({
+            settings,
+            weekTemplate: settings.modules.gym
+              ? syncGymBlocks(state.weekTemplate, state.settings, days)
+              : state.weekTemplate,
           }),
         );
       },

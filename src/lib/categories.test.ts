@@ -4,10 +4,12 @@ import {
   CATEGORIES,
   categoryDef,
   categoryMeta,
+  filterByModules,
   isGrowthCategory,
   isRestCategory,
 } from "./categories";
-import type { CategoryDef } from "./types";
+import { DEFAULT_SETTINGS_V2 } from "./defaults";
+import type { CategoryDef, Modules } from "./types";
 
 describe("built-in categories", () => {
   it("keeps the builtin ids in order", () => {
@@ -76,5 +78,49 @@ describe("category helpers", () => {
     expect(isGrowthCategory("work", [custom])).toBe(false);
     expect(isRestCategory("rest", [custom])).toBe(true);
     expect(isRestCategory("sewing", [custom])).toBe(false);
+  });
+});
+
+describe("module-gated categories", () => {
+  const modules = (over: Partial<Modules>): Modules => ({
+    ...DEFAULT_SETTINGS_V2.modules,
+    ...over,
+  });
+
+  const padel: CategoryDef = {
+    id: "padel",
+    label: "پدل",
+    short: "پدل",
+    icon: "dumbbell",
+    tone: "olive",
+    builtin: false,
+    module: "gym",
+  };
+
+  it("hides a custom category that belongs to a switched-off module", () => {
+    const blocks = [{ categoryId: "padel" }, { categoryId: "work" }];
+    expect(
+      filterByModules(blocks, modules({ gym: false }), [padel]).map(
+        (block) => block.categoryId,
+      ),
+    ).toEqual(["work"]);
+  });
+
+  it("shows it again when the module is on", () => {
+    const blocks = [{ categoryId: "padel" }, { categoryId: "work" }];
+    expect(
+      filterByModules(blocks, modules({ gym: true }), [padel]).map(
+        (block) => block.categoryId,
+      ),
+    ).toEqual(["padel", "work"]);
+  });
+
+  it("gates the built-in addons without a category list", () => {
+    const blocks = [{ categoryId: "gym" }, { categoryId: "work" }];
+    expect(
+      filterByModules(blocks, modules({ gym: false })).map(
+        (block) => block.categoryId,
+      ),
+    ).toEqual(["work"]);
   });
 });

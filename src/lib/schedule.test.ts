@@ -5,19 +5,30 @@ import { nextWeekdayKey } from "./jalali";
 import {
   buildDaySchedule,
   buildLegacyDaySchedule,
+  getModeWindow,
   legacyWeekTemplate,
   skipCandidates,
 } from "./schedule";
 import type {
   AppSettingsV2,
+  CategoryDef,
   TemplateBlock,
   WeekTemplate,
   WeekdayIndex,
 } from "./types";
 
+// The engine tests use a fully switched-on account; the fresh-account defaults
+// live in templates.test.ts.
 const settings: AppSettingsV2 = {
   ...DEFAULT_SETTINGS_V2,
   lateShiftMinutes: 60,
+  gymDays: [0, 2, 4],
+  modules: {
+    ...DEFAULT_SETTINGS_V2.modules,
+    cefr: true,
+    gym: true,
+    linkedin: true,
+  },
 };
 
 const saturday = nextWeekdayKey("2026-11-01", 0, true);
@@ -166,6 +177,130 @@ describe("template day engine", () => {
     expect(skipCandidates(schedule).map((item) => item.id)).toEqual([
       "linkedin",
     ]);
+  });
+});
+
+describe("module switches drive the day", () => {
+  const addonTemplate = templateWith([
+    block({ id: "wake", start: "07:00", end: "07:30", categoryId: "rest" }),
+    block({
+      id: "language-morning",
+      start: "08:00",
+      end: "08:45",
+      categoryId: "language",
+    }),
+    block({
+      id: "deep",
+      start: "09:00",
+      end: "10:00",
+      categoryId: "programming",
+      core: true,
+    }),
+    block({
+      id: "gym",
+      start: "18:30",
+      end: "19:45",
+      categoryId: "gym",
+      priority: 2,
+    }),
+    block({
+      id: "linkedin",
+      start: "21:00",
+      end: "21:20",
+      categoryId: "linkedin",
+      priority: 3,
+    }),
+  ]);
+
+  function modulesOf(patch: Partial<AppSettingsV2["modules"]>) {
+    return { ...settings.modules, ...patch };
+  }
+
+  it("hides the blocks of a module the user switched off", () => {
+    const schedule = buildDaySchedule(
+      saturday,
+      { ...settings, modules: modulesOf({ cefr: false, linkedin: false }) },
+      "early",
+      addonTemplate,
+      BUILTIN_CATEGORIES,
+    );
+    expect(schedule.blocks.map((item) => item.id)).toEqual([
+      "wake",
+      "deep",
+      "gym",
+    ]);
+  });
+
+  it("brings a module\'s blocks back without touching the template", () => {
+    const schedule = buildDaySchedule(
+      saturday,
+      { ...settings, modules: modulesOf({}) },
+      "early",
+      addonTemplate,
+      BUILTIN_CATEGORIES,
+    );
+    expect(schedule.blocks.map((item) => item.id)).toEqual([
+      "wake",
+      "language-morning",
+      "deep",
+      "gym",
+      "linkedin",
+    ]);
+    expect(addonTemplate[0].blocks).toHaveLength(5);
+  });
+
+  it("shifts the day by the minutes the user dialled in", () => {
+    const template = templateWith([
+      block({
+        id: "deep",
+        start: "09:00",
+        end: "10:00",
+        categoryId: "programming",
+        core: true,
+      }),
+    ]);
+    const schedule = buildDaySchedule(
+      saturday,
+      { ...settings, lateShiftMinutes: 30 },
+      "late",
+      template,
+      BUILTIN_CATEGORIES,
+    );
+    expect(schedule.blocks[0].startTime).toBe("09:30");
+    expect(getModeWindow(settings, "late").offset).toBe(60);
+    expect(getModeWindow({ ...settings, lateShiftMinutes: 45 }, "late").offset).toBe(
+      45,
+    );
+  });
+
+  it("hides a custom category the user linked to a switched-off module", () => {
+    const padel: CategoryDef = {
+      id: "padel",
+      label: "پدل",
+      short: "پدل",
+      icon: "dumbbell",
+      tone: "olive",
+      builtin: false,
+      module: "gym",
+    };
+    const template = templateWith([
+      block({
+        id: "deep",
+        start: "09:00",
+        end: "10:00",
+        categoryId: "programming",
+        core: true,
+      }),
+      block({ id: "padel", start: "18:00", end: "19:00", categoryId: "padel" }),
+    ]);
+    const schedule = buildDaySchedule(
+      saturday,
+      { ...settings, modules: modulesOf({ gym: false }) },
+      "early",
+      template,
+      [...BUILTIN_CATEGORIES, padel],
+    );
+    expect(schedule.blocks.map((item) => item.id)).toEqual(["deep"]);
   });
 });
 
