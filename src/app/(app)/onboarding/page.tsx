@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccentPicker } from "@/components/AccentPicker";
 import { BrandMark, BrandWord } from "@/components/Brand";
 import { Icon } from "@/components/Icon";
 import { LoadingScreen } from "@/components/LoadingScreen";
@@ -9,12 +10,12 @@ import { TimeField } from "@/components/settings/TimeField";
 import { safeNext } from "@/lib/auth/safe-next";
 import { formatTimeRange, timeToMinutes, toFa, WEEKDAYS } from "@/lib/jalali";
 import { migrateData } from "@/lib/migrate";
-import { ACCENTS, PALETTES } from "@/lib/palettes";
+import { PALETTES } from "@/lib/palettes";
 import { readLegacyData } from "@/lib/storage";
 import { useAppStore } from "@/lib/store";
 import { ensurePresetCategories, presetWeekTemplate, TEMPLATE_PRESETS } from "@/lib/templates";
 import type {
-  AccentId,
+  AccentChoice,
   AppDataV2,
   PaletteId,
   TemplateId,
@@ -53,7 +54,7 @@ function OnboardingForm() {
     initial.settings.templateId,
   );
   const [palette, setPalette] = useState<PaletteId>(initial.settings.palette);
-  const [accent, setAccent] = useState<AccentId>(initial.settings.accent);
+  const [accent, setAccent] = useState<AccentChoice>(initial.settings.accent);
   const [legacy, setLegacy] = useState<AppDataV2 | null>(null);
   const [legacyChecked, setLegacyChecked] = useState(false);
   const [imported, setImported] = useState<AppDataV2 | null>(null);
@@ -160,7 +161,7 @@ function OnboardingForm() {
     updateSettings({ palette: nextPalette });
   };
 
-  const chooseAccent = (nextAccent: AccentId) => {
+  const chooseAccent = (nextAccent: AccentChoice) => {
     setAccent(nextAccent);
     updateSettings({ accent: nextAccent });
   };
@@ -536,30 +537,12 @@ function OnboardingForm() {
 
               <div className="mt-4">
                 <p className="field-label">رنگ تاکیدی</p>
-                <div className="accent-row mt-2" role="radiogroup" aria-label="رنگ تاکیدی">
-                  {ACCENTS.map((item) => {
-                    const active = accent === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={active}
-                        className="accent-chip"
-                        data-active={active}
-                        onClick={() => chooseAccent(item.id)}
-                      >
-                        <span
-                          className="accent-dot"
-                          style={{
-                            background: `linear-gradient(135deg, ${item.light} 50%, ${item.dark} 50%)`,
-                          }}
-                          aria-hidden
-                        />
-                        {item.label}
-                      </button>
-                    );
-                  })}
+                <div className="mt-2">
+                  <AccentPicker
+                    palette={palette}
+                    value={accent}
+                    onChange={chooseAccent}
+                  />
                 </div>
               </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { AccentPicker } from "@/components/AccentPicker";
 import { Bloom } from "@/components/Bloom";
 import { Icon } from "@/components/Icon";
 import { EditorHeader } from "@/components/settings/EditorHeader";
@@ -29,7 +30,7 @@ export default function AppearancePage() {
       <EditorHeader
         eyebrow="ظاهر"
         title="رنگ‌ها را عوض کن، حالِ روز را نه."
-        subtitle="شش پالت، پنج رنگ تاکیدی و چهار شکل شکوفه. هر تغییر همان لحظه روی صفحه می‌نشیند و روی همین دستگاه می‌ماند."
+        subtitle={`${PALETTES.length} پالت، ${ACCENTS.length} رنگ تاکیدی به‌علاوه‌ی هم‌رنگِ پالت، و چهار شکل شکوفه. هر تغییر همان لحظه روی صفحه می‌نشیند و با حسابِ خودت می‌ماند.`}
       />
 
       <section className="surface mt-6 p-5 sm:p-6" aria-labelledby="appearance-theme">
@@ -82,8 +83,8 @@ export default function AppearancePage() {
           </span>
         </div>
         <p className="mt-2 text-[11.5px] leading-6 text-muted">
-          پالت، کاغذ و جوهر و رنگ‌های دسته‌ها را با هم عوض می‌کند؛ متن‌ها همیشه
-          خوانا می‌مانند.
+          پالت کاغذ، جوهر و رنگ اصلی را با هم عوض می‌کند؛ رنگ دسته‌ها از تون
+          خودشان می‌آید و متن‌ها همیشه خوانا می‌مانند.
         </p>
         <div className="palette-grid mt-4" role="radiogroup" aria-label="پالت رنگ">
           {PALETTES.map((palette) => {
@@ -122,31 +123,11 @@ export default function AppearancePage() {
 
         <div className="mt-6">
           <p className="field-label">رنگ تاکیدی</p>
-          <div className="accent-row" role="radiogroup" aria-label="رنگ تاکیدی">
-            {ACCENTS.map((accent) => {
-              const active = settings.accent === accent.id;
-              return (
-                <button
-                  key={accent.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  className="accent-chip"
-                  data-active={active}
-                  onClick={() => updateSettings({ accent: accent.id })}
-                >
-                  <span
-                    className="accent-dot"
-                    style={{
-                      background: `linear-gradient(135deg, ${accent.light} 50%, ${accent.dark} 50%)`,
-                    }}
-                    aria-hidden
-                  />
-                  {accent.label}
-                </button>
-              );
-            })}
-          </div>
+          <AccentPicker
+            palette={settings.palette}
+            value={settings.accent}
+            onChange={(accent) => updateSettings({ accent })}
+          />
         </div>
       </section>
 

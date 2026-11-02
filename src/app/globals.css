@@ -28,8 +28,10 @@
   --stone: #918b7d;
   --stone-soft: #ebe7dd;
   --danger: #b4573f;
-  --btn-bg: var(--green-deep);
+  --btn-bg: var(--green);
   --btn-ink: #fbf8ef;
+  --on-accent: #fbf8ef;
+  --scrim: rgba(16, 24, 19, 0.38);
   --bloom-cream: #f8f1de;
   --bloom-gold: #d6b878;
   --shadow-sm: 0 1px 2px rgba(34, 48, 41, 0.05);
@@ -68,8 +70,10 @@
   --stone: #b2ac9f;
   --stone-soft: #26251f;
   --danger: #d98770;
-  --btn-bg: #a9d0b2;
+  --btn-bg: var(--green);
   --btn-ink: #142019;
+  --on-accent: #142019;
+  --scrim: rgba(5, 8, 7, 0.66);
   --bloom-cream: #ede4cd;
   --bloom-gold: #d1b375;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
@@ -912,7 +916,7 @@ textarea.field {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: color-mix(in srgb, #101813 38%, transparent);
+  background: var(--scrim);
   backdrop-filter: blur(5px);
   padding: 0;
 }
@@ -2283,7 +2287,7 @@ textarea.field {
 [data-theme="dark"] .cefr-step[data-state="current"] .cefr-node {
   background: var(--green);
   border-color: var(--green);
-  color: #142019;
+  color: var(--on-accent);
 }
 .cefr-step-hours {
   font-size: 8.5px;
@@ -3009,7 +3013,7 @@ textarea.field {
   color: var(--btn-ink);
 }
 [data-theme="dark"] .theme-check {
-  color: #142019;
+  color: var(--on-accent);
 }
 
 .range {

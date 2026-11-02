@@ -11,6 +11,12 @@ export type OverlayName = "focus" | "commute" | "review" | null;
 export interface ToastMessage {
   id: number;
   message: string;
+  action?: ToastAction;
+}
+
+export interface ToastAction {
+  label: string;
+  run: () => void;
 }
 
 interface UIState {
@@ -22,7 +28,7 @@ interface UIState {
   openCommute: () => void;
   openReview: () => void;
   closeOverlay: () => void;
-  showToast: (message: string) => void;
+  showToast: (message: string, action?: ToastAction) => void;
   dismissToast: () => void;
 }
 
@@ -36,7 +42,7 @@ export const useUIStore = create<UIState>((set) => ({
   openCommute: () => set({ overlay: "commute" }),
   openReview: () => set({ overlay: "review" }),
   closeOverlay: () => set({ overlay: null }),
-  showToast: (message) =>
-    set({ toast: { id: Date.now(), message } }),
+  showToast: (message, action) =>
+    set({ toast: { id: Date.now(), message, ...(action ? { action } : {}) } }),
   dismissToast: () => set({ toast: null }),
 }));

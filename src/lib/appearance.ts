@@ -1,7 +1,11 @@
-import { APPEARANCE_KEY, THEME_KEY } from "./defaults";
+import {
+  APPEARANCE_KEY,
+  APPEARANCE_VARS_KEY,
+  THEME_KEY,
+} from "./defaults";
 import { ACCENTS, CATEGORY_TONES, PALETTES } from "./palettes";
 import type {
-  AccentId,
+  AccentChoice,
   AppSettingsV2,
   BloomStyle,
   CategoryTone,
@@ -10,6 +14,69 @@ import type {
 } from "./types";
 
 export type ThemeMode = "light" | "dark";
+
+/** Baked into the bundle and the pre-paint script of the same build. */
+export const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID ?? "dev";
+
+export interface StorageLike {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
+export interface VarsCache {
+  mode: ThemeMode;
+  vars: Record<string, string>;
+}
+
+export function writeVarsCache(
+  storage: StorageLike | null | undefined,
+  build: string,
+  mode: ThemeMode,
+  vars: Record<string, string>,
+): void {
+  if (!storage) return;
+  try {
+    storage.setItem(
+      APPEARANCE_VARS_KEY,
+      JSON.stringify({ build, mode, vars }),
+    );
+  } catch {
+    /* private mode: the store rehydrate still paints the theme */
+  }
+}
+
+export function readVarsCache(
+  storage: StorageLike | null | undefined,
+  build: string,
+): VarsCache | null {
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(APPEARANCE_VARS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      build?: unknown;
+      mode?: unknown;
+      vars?: unknown;
+    };
+    if (parsed.build !== build) return null;
+    if (parsed.mode !== "light" && parsed.mode !== "dark") return null;
+    if (
+      !parsed.vars ||
+      typeof parsed.vars !== "object" ||
+      Array.isArray(parsed.vars)
+    ) {
+      return null;
+    }
+    const vars: Record<string, string> = {};
+    for (const [name, value] of Object.entries(parsed.vars)) {
+      if (typeof value !== "string") return null;
+      vars[name] = value;
+    }
+    return Object.keys(vars).length > 0 ? { mode: parsed.mode, vars } : null;
+  } catch {
+    return null;
+  }
+}
 
 export interface Rgb {
   r: number;
@@ -88,31 +155,20 @@ export function ensureContrast(fg: string, bg: string, min = 4.5): string {
     candidate = mix(direction, fg, step / 20);
     if (contrastRatio(candidate, bg) >= min) return candidate;
   }
+  if (process.env.NODE_ENV !== "production") {
+    console.warn(
+      `[appearance] ${fg} cannot reach ${min}:1 on ${bg} — closest is ${candidate} at ${contrastRatio(
+        candidate,
+        bg,
+      ).toFixed(2)}:1`,
+    );
+  }
   return candidate;
 }
 
-export function readableOn(bg: string): string {
-  const light = "#fbf8ef";
-  const dark = "#101713";
-  return contrastRatio(light, bg) >= contrastRatio(dark, bg) ? light : dark;
-}
-
-function nearestAccent(hex: string, mode: ThemeMode): AccentId {
-  const target = parseHex(hex);
-  let best = ACCENTS[0];
-  let bestDistance = Number.POSITIVE_INFINITY;
-  for (const accent of ACCENTS) {
-    const candidate = parseHex(accent[mode]);
-    const distance =
-      (candidate.r - target.r) ** 2 +
-      (candidate.g - target.g) ** 2 +
-      (candidate.b - target.b) ** 2;
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      best = accent;
-    }
-  }
-  return best.id;
+/** Picks whichever of `a` or `b` reads better on `bg`. */
+export function bestInkOn(bg: string, a: string, b: string): string {
+  return contrastRatio(a, bg) >= contrastRatio(b, bg) ? a : b;
 }
 
 function petals(
@@ -148,27 +204,44 @@ function petals(
  */
 export function appearanceVars(
   paletteId: PaletteId,
-  accentId: AccentId,
+  accent: AccentChoice,
   mode: ThemeMode,
   bloomStyle: BloomStyle = "auto",
 ): Record<string, string> {
   const palette = PALETTES.find((item) => item.id === paletteId) ?? PALETTES[0];
-  const accentDef = ACCENTS.find((item) => item.id === accentId) ?? ACCENTS[0];
   const [paper, surface] = palette[mode];
   const rawInk = palette[mode][3];
 
-  const ink = ensureContrast(rawInk, paper, 9);
-  const ink2 = ensureContrast(mix(rawInk, paper, 0.8), surface, 6.5);
-  const muted = ensureContrast(mix(rawInk, paper, 0.55), surface, 4.5);
-  const faint = ensureContrast(mix(rawInk, paper, 0.72), surface, 3);
+  const accentHex =
+    accent === "palette"
+      ? palette[mode][2]
+      : (ACCENTS.find((item) => item.id === accent) ?? ACCENTS[0])[mode];
 
-  const accent = ensureContrast(accentDef[mode], paper, 4.5);
-  const greenDeep = ensureContrast(mix(accent, ink, 0.42), surface, 4.5);
-  const greenSoft = mix(accent, surface, 0.18);
-  const greenWash = mix(accent, surface, 0.1);
+  const ink = ensureContrast(rawInk, paper, 7);
+  const paper2 = mix(ink, paper, 0.05);
+  const surface2 = mix(ink, surface, 0.035);
+  // Cards and rails paint the tinted variants too, so text has to clear the
+  // worst of the four — a token tuned only on `surface` goes under AA on paper-2.
+  const cards = [paper, paper2, surface, surface2];
+  const onCards = (fg: string, min: number) => {
+    const worst = cards.reduce(
+      (low, bg) => (contrastRatio(fg, bg) < contrastRatio(fg, low) ? bg : low),
+      cards[0],
+    );
+    return ensureContrast(fg, worst, min);
+  };
+  const ink2 = onCards(mix(rawInk, paper, 0.8), 6.5);
+  const muted = onCards(mix(rawInk, paper, 0.55), 4.5);
+  const faint = onCards(mix(rawInk, paper, 0.72), 3);
 
-  const buttonBg = mode === "dark" ? accent : greenDeep;
-  const buttonInk = ensureContrast(readableOn(buttonBg), buttonBg, 4.5);
+  const green = ensureContrast(accentHex, paper, 4.5);
+  const greenDeep = ensureContrast(mix(green, ink, 0.42), surface, 4.5);
+  const greenSoft = mix(green, surface, 0.18);
+  const greenWash = mix(green, surface, 0.1);
+
+  const onAccent = ensureContrast(bestInkOn(green, paper, ink), green, 4.5);
+  const shadowBase = mode === "dark" ? mix(paper, "#000000", 0.2) : ink;
+  const scrimBase = mode === "dark" ? mix(paper, "#000000", 0.35) : ink;
 
   const tones = {} as Record<CategoryTone, { base: string; soft: string; ink: string }>;
   for (const tone of CATEGORY_TONES) {
@@ -181,26 +254,31 @@ export function appearanceVars(
     };
   }
 
-  const petalColors = petals(bloomStyle, accent, greenDeep, surface, (id) => tones[id]);
+  const petalColors = petals(bloomStyle, green, greenDeep, surface, (id) => tones[id]);
   const gold = tones.gold.base;
 
   const vars: Record<string, string> = {
     "--paper": paper,
-    "--paper-2": mix(ink, paper, 0.05),
+    "--paper-2": paper2,
     "--surface": surface,
-    "--surface-2": mix(ink, surface, 0.035),
+    "--surface-2": surface2,
     "--ink": ink,
     "--ink-2": ink2,
     "--muted": muted,
     "--faint": faint,
     "--line": rgba(ink, mode === "dark" ? 0.15 : 0.12),
     "--line-strong": rgba(ink, mode === "dark" ? 0.26 : 0.2),
-    "--green": accent,
+    "--green": green,
     "--green-deep": greenDeep,
     "--green-soft": greenSoft,
     "--green-wash": greenWash,
-    "--btn-bg": buttonBg,
-    "--btn-ink": buttonInk,
+    "--on-accent": onAccent,
+    "--btn-bg": green,
+    "--btn-ink": onAccent,
+    "--scrim": rgba(scrimBase, mode === "dark" ? 0.66 : 0.38),
+    "--shadow-sm": rgba(shadowBase, mode === "dark" ? 0.24 : 0.05),
+    "--shadow-md": rgba(shadowBase, mode === "dark" ? 0.6 : 0.28),
+    "--shadow-lg": rgba(shadowBase, mode === "dark" ? 0.7 : 0.34),
     "--danger": ensureContrast(mode === "dark" ? "#d98770" : "#b4573f", surface, 4.5),
     "--bloom-cream": mix(gold, surface, 0.42),
     "--bloom-gold": gold,
@@ -216,6 +294,8 @@ export function appearanceVars(
     vars[`--tone-${tone.id}`] = value.base;
     vars[`--tone-${tone.id}-soft`] = value.soft;
     vars[`--tone-${tone.id}-ink`] = value.ink;
+    // `--green` and `--green-soft` belong to the accent, not the green tone.
+    if (tone.id === "green") continue;
     vars[`--${tone.id}`] = value.base;
     vars[`--${tone.id}-soft`] = value.soft;
   }
@@ -228,7 +308,7 @@ export const PALETTE_PRELOAD: Record<string, Record<string, string>> =
     PALETTES.flatMap((palette) =>
       (["light", "dark"] as const).map((mode) => [
         `${palette.id}:${mode}`,
-        appearanceVars(palette.id, nearestAccent(palette[mode][2], mode), mode),
+        appearanceVars(palette.id, "palette", mode),
       ]),
     ),
   );
@@ -243,14 +323,14 @@ export function resolveMode(theme: ThemeChoice): ThemeMode {
 
 export interface AppearanceChoice {
   palette: PaletteId;
-  accent: AccentId;
+  accent: AccentChoice;
   bloomStyle: BloomStyle;
 }
 
 export function readAppearance(): AppearanceChoice {
   const fallback: AppearanceChoice = {
     palette: "garden",
-    accent: "green",
+    accent: "palette",
     bloomStyle: "auto",
   };
   if (typeof window === "undefined") return fallback;
@@ -262,9 +342,11 @@ export function readAppearance(): AppearanceChoice {
       palette: PALETTES.some((item) => item.id === parsed.palette)
         ? (parsed.palette as PaletteId)
         : "garden",
-      accent: ACCENTS.some((item) => item.id === parsed.accent)
-        ? (parsed.accent as AccentId)
-        : "green",
+      accent:
+        parsed.accent === "palette" ||
+        ACCENTS.some((item) => item.id === parsed.accent)
+          ? (parsed.accent as AccentChoice)
+          : "palette",
       bloomStyle:
         parsed.bloomStyle === "cream" ||
         parsed.bloomStyle === "gold" ||
@@ -308,6 +390,7 @@ export function applyAppearance(settings: AppearanceSettings) {
       }),
     );
     window.localStorage.setItem(THEME_KEY, settings.theme);
+    writeVarsCache(window.localStorage, BUILD_ID, mode, vars);
   } catch {
     /* storage can be unavailable in private mode */
   }

@@ -24,7 +24,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 export const DEFAULT_SETTINGS_V2: AppSettingsV2 = {
   ...DEFAULT_SETTINGS,
   palette: "garden",
-  accent: "green",
+  accent: "palette",
   lateEnabled: true,
   lateShiftMinutes: 60,
   templateId: "programmer",
@@ -49,3 +49,4 @@ export const STORAGE_KEY = "rooznegar-v2";
 export const LEGACY_STORAGE_KEY = "rooznegar-v1";
 export const THEME_KEY = "rz-theme";
 export const APPEARANCE_KEY = "rz-appearance";
+export const APPEARANCE_VARS_KEY = "rz-appearance-vars";

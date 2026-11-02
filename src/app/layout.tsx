@@ -1,7 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Providers } from "@/components/Providers";
-import { PALETTE_PRELOAD } from "@/lib/appearance";
+import { PALETTE_PRELOAD, BUILD_ID } from "@/lib/appearance";
+import {
+  APPEARANCE_KEY,
+  APPEARANCE_VARS_KEY,
+  THEME_KEY,
+} from "@/lib/defaults";
 import { asset } from "@/lib/site";
 import "./globals.css";
 
@@ -64,12 +69,12 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   colorScheme: "light dark",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f4efe3" },
-    { media: "(prefers-color-scheme: dark)", color: "#111713" },
+    { media: "(prefers-color-scheme: light)", color: PALETTE_PRELOAD["garden:light"]["--paper"] },
+    { media: "(prefers-color-scheme: dark)", color: PALETTE_PRELOAD["garden:dark"]["--paper"] },
   ],
 };
 
-const appearanceScript = `(function(){try{var t=localStorage.getItem('rz-theme');var m=window.matchMedia('(prefers-color-scheme: dark)').matches;var mode=t==='dark'||((!t||t==='system')&&m)?'dark':'light';var a={};try{a=JSON.parse(localStorage.getItem('rz-appearance')||'{}')||{}}catch(e){}var table=${JSON.stringify(PALETTE_PRELOAD)};var vars=table[(a.palette||'garden')+':'+mode]||table['garden:'+mode];if(vars){for(var k in vars){document.documentElement.style.setProperty(k,vars[k]);}}var root=document.documentElement;root.dataset.theme=mode;root.dataset.palette=a.palette||'garden';root.dataset.bloom=a.bloomStyle||'auto';}catch(e){document.documentElement.dataset.theme='light';}})();`;
+const appearanceScript = `(function(){try{var t=localStorage.getItem('${THEME_KEY}');var m=window.matchMedia('(prefers-color-scheme: dark)').matches;var mode=t==='dark'||((!t||t==='system')&&m)?'dark':'light';var a={};try{a=JSON.parse(localStorage.getItem('${APPEARANCE_KEY}')||'{}')||{}}catch(e){}var vars=null;try{var c=JSON.parse(localStorage.getItem('${APPEARANCE_VARS_KEY}')||'null');if(c&&c.build==='${BUILD_ID}'&&c.mode===mode&&c.vars)vars=c.vars;}catch(e){}if(!vars){var table=${JSON.stringify(PALETTE_PRELOAD)};vars=table[(a.palette||'garden')+':'+mode]||table['garden:'+mode];}if(vars){for(var k in vars){document.documentElement.style.setProperty(k,vars[k]);}}var root=document.documentElement;root.dataset.theme=mode;root.dataset.palette=a.palette||'garden';root.dataset.bloom=a.bloomStyle||'auto';}catch(e){document.documentElement.dataset.theme='light';}})();`;
 
 export default function RootLayout({
   children,

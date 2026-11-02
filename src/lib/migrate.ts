@@ -111,7 +111,11 @@ function normalizeSettings(raw: unknown): AppSettingsV2 {
   if (!THEMES.has(String(out.theme))) out.theme = "system";
   if (!MODES.has(String(out.defaultMode))) out.defaultMode = "early";
   if (!PALETTES.has(String(out.palette))) out.palette = "garden";
-  if (!ACCENTS.has(String(out.accent))) out.accent = "green";
+  // Default green was never a choice, it was the absence of one — hand the
+  // accent back to the palette so a fresh install actually shows the theme.
+  if (out.accent === "green" || !ACCENTS.has(String(out.accent))) {
+    out.accent = "palette";
+  }
   if (!TEMPLATES.has(String(out.templateId))) out.templateId = "programmer";
   if (!GARDEN_RULES.has(String(out.gardenRule))) out.gardenRule = "one";
   if (!BLOOM_STYLES.has(String(out.bloomStyle))) out.bloomStyle = "auto";

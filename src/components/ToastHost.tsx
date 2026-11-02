@@ -10,7 +10,7 @@ export function ToastHost() {
   const dismiss = useUIStore((s) => s.dismissToast);
 
   useEffect(() => {
-    if (!toast) return;
+    if (!toast || toast.action) return;
     const timer = window.setTimeout(dismiss, 3400);
     return () => window.clearTimeout(timer);
   }, [toast, dismiss]);
@@ -34,6 +34,19 @@ export function ToastHost() {
               <Icon name="leaf" size={13} />
             </span>
             <span>{toast.message}</span>
+            {toast.action && (
+              <button
+                type="button"
+                onClick={() => {
+                  toast.action?.run();
+                  dismiss();
+                }}
+                className="ms-auto rounded-full px-3 py-1 text-[11px] font-bold"
+                style={{ background: "var(--btn-bg)", color: "var(--btn-ink)" }}
+              >
+                {toast.action.label}
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

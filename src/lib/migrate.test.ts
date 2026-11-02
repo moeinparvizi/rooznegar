@@ -95,6 +95,38 @@ describe("migrateData", () => {
     expect(data?.settings.accent).toBe("violet");
   });
 
+  it("hands the accent back to the palette for green-default accounts", () => {
+    const data = migrateData(v1(), now);
+    expect(data?.settings.accent).toBe("palette");
+  });
+
+  it("swaps a stored default green for the palette accent", () => {
+    const first = migrateData(v1(), now);
+    const data = migrateData(
+      { ...first, settings: { ...first?.settings, accent: "green" } },
+      now,
+    );
+    expect(data?.settings.accent).toBe("palette");
+  });
+
+  it("keeps the palette choice across a round trip", () => {
+    const first = migrateData(v1(), now);
+    const data = migrateData(
+      { ...first, settings: { ...first?.settings, accent: "palette" } },
+      now,
+    );
+    expect(data?.settings.accent).toBe("palette");
+  });
+
+  it("falls back to the palette when the accent is junk", () => {
+    const first = migrateData(v1(), now);
+    const data = migrateData(
+      { ...first, settings: { ...first?.settings, accent: "chartreuse" } },
+      now,
+    );
+    expect(data?.settings.accent).toBe("palette");
+  });
+
   it("keeps the late shift the user dialled in", () => {
     const first = migrateData(v1(), now);
     const data = migrateData(

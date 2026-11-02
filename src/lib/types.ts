@@ -135,6 +135,8 @@ export type PaletteId =
   | "sky"
   | "dracula";
 export type AccentId = "green" | "blue" | "olive" | "tea" | "amber" | "violet";
+/** `palette` lets the active palette pick the accent. */
+export type AccentChoice = AccentId | "palette";
 export type TemplateId =
   | "programmer"
   | "athlete"
@@ -201,7 +203,7 @@ export type WeekTemplate = Record<WeekdayIndex, { blocks: TemplateBlock[] }>;
 
 export interface AppSettingsV2 extends AppSettings {
   palette: PaletteId;
-  accent: AccentId;
+  accent: AccentChoice;
   lateEnabled: boolean;
   lateShiftMinutes: number;
   templateId: TemplateId;

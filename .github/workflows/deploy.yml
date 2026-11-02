@@ -30,6 +30,8 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          # Invalidates the pre-paint theme cache whenever the site is rebuilt.
+          NEXT_PUBLIC_BUILD_ID: ${{ github.sha }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out

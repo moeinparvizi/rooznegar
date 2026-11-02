@@ -50,6 +50,8 @@ const CACHE = \`rooznegar-${version}\`;
 const BASE = ${JSON.stringify(BASE)};
 const PRECACHE = ${JSON.stringify(precache, null, 2)};
 const OFFLINE = BASE + "/";
+const HASHED = /\\/(_next\\/static|icons)\\//;
+const OFFLINE_HTML = "<!doctype html><html lang=\\"fa\\" dir=\\"rtl\\"><head><meta charset=\\"utf-8\\"><meta name=\\"color-scheme\\" content=\\"light dark\\"><title>روزنگار</title></head><body style=\\"font-family:Tahoma;background:Canvas;color:CanvasText;display:grid;place-items:center;height:100vh;margin:0\\"><p>این صفحه آفلاین باز نشده. یک بار دیگر با اتصال بازش کن.</p></body></html>";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -65,46 +67,53 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+self.addEventListener("message", (event) => {
+  if (event.data === "SKIP_WAITING") self.skipWaiting();
+});
+
+async function putInCache(request, response) {
+  if (response && response.ok) {
+    const cache = await caches.open(CACHE);
+    cache.put(request, response.clone());
+  }
+  return response;
+}
+
+async function cacheFirst(request) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
+  return putInCache(request, await fetch(request));
+}
+
+async function networkFirst(request) {
+  try {
+    return await putInCache(request, await fetch(request));
+  } catch (error) {
+    const cache = await caches.open(CACHE);
+    const cached = await cache.match(request, { ignoreSearch: true });
+    if (cached) return cached;
+    if (request.mode === "navigate") {
+      return (await cache.match(OFFLINE)) || new Response(OFFLINE_HTML, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    }
+    throw error;
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response && response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(async () => {
-          const cache = await caches.open(CACHE);
-          return (
-            (await cache.match(request, { ignoreSearch: true })) ||
-            (await cache.match(OFFLINE)) ||
-            new Response("<!doctype html><html lang=\\"fa\\" dir=\\"rtl\\"><meta charset=\\"utf-8\\"><title>روزنگار</title><body style=\\"font-family:Tahoma;background:#f4efe3;color:#22372e;display:grid;place-items:center;height:100vh;margin:0\\"><p>این صفحه آفلاین باز نشده. یک بار دیگر با اتصال بازش کن.</p></body></html>", { headers: { "Content-Type": "text/html; charset=utf-8" } })
-          );
-        })
-    );
+  // Hashed files change name with every deploy, so the cache is never stale.
+  if (HASHED.test(url.pathname)) {
+    event.respondWith(cacheFirst(request));
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request).then((response) => {
-        if (response && response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy));
-        }
-        return response;
-      });
-    })
-  );
+  // Everything else is network-first: a new release shows up on the next load
+  // instead of serving the previous shell, and offline still answers from cache.
+  event.respondWith(networkFirst(request));
 });
 `;
 
