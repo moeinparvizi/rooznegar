@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Icon } from "./Icon";
 
@@ -117,6 +118,12 @@ function SheetContent({
   const ref = useDialog(onClose);
   const titleId = useId();
   const descId = useId();
+  // Page transitions keep a `transform` on an ancestor, and a transformed
+  // ancestor becomes the containing block for `position: fixed` — the sheet
+  // would then render far outside the viewport. Mounting on body escapes it.
+  const [host] = useState<HTMLElement | null>(() =>
+    typeof document === "undefined" ? null : document.body,
+  );
 
   const handleBackdrop = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
@@ -125,7 +132,9 @@ function SheetContent({
     [onClose],
   );
 
-  return (
+  if (!host) return null;
+
+  return createPortal(
     <motion.div
       className="overlay"
       initial={{ opacity: 0 }}
@@ -173,6 +182,7 @@ function SheetContent({
         <div className="mt-5">{children}</div>
         {footer && <div className="mt-6">{footer}</div>}
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    host,
   );
 }
