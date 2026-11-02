@@ -51,6 +51,13 @@ export const PALETTES: PaletteDef[] = [
     light: ["#eef4fb", "#fbfdff", "#3e6491", "#1e2a39"],
     dark: ["#0d1520", "#162130", "#8fb6e0", "#e8f0f9"],
   },
+  {
+    id: "dracula",
+    label: "دراکولا",
+    note: "بنفش روی شبِ کبود",
+    light: ["#f6f3fb", "#fdfcff", "#7d3ec9", "#2a2140"],
+    dark: ["#282a36", "#343746", "#bd93f9", "#f8f8f2"],
+  },
 ];
 
 export const ACCENTS: { id: AccentId; label: string; light: string; dark: string }[] = [
@@ -59,6 +66,7 @@ export const ACCENTS: { id: AccentId; label: string; light: string; dark: string
   { id: "olive", label: "زیتونی", light: "#6f7a4f", dark: "#bcc994" },
   { id: "tea", label: "فیروزه‌ای", light: "#3f7371", dark: "#8fc7c3" },
   { id: "amber", label: "کهربایی", light: "#8a6528", dark: "#dcc084" },
+  { id: "violet", label: "بنفش", light: "#6d35b8", dark: "#bd93f9" },
 ];
 
 export interface ToneDef {

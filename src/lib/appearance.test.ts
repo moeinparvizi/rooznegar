@@ -94,8 +94,8 @@ describe("appearance tokens", () => {
     }
   });
 
-  it("preloads all twelve palette/mode combinations", () => {
-    expect(Object.keys(PALETTE_PRELOAD)).toHaveLength(12);
+  it("preloads every palette in both modes", () => {
+    expect(Object.keys(PALETTE_PRELOAD)).toHaveLength(PALETTES.length * 2);
     for (const palette of PALETTES) {
       for (const mode of modes) {
         expect(PALETTE_PRELOAD[`${palette.id}:${mode}`]?.["--paper"]).toBeTruthy();
