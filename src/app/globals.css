@@ -3939,6 +3939,57 @@ button.sync-badge:hover {
   background: var(--surface);
 }
 
+.sync-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+.sync-panel-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sync-panel-copy strong {
+  font-size: 12px;
+  color: var(--ink);
+}
+.sync-panel-copy small {
+  font-size: 10.5px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.sync-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sync-off {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 11px;
+  line-height: 1.9;
+}
+.sync-off svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--faint);
+}
+
 .auth-field {
   display: block;
   margin-top: 14px;

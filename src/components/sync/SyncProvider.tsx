@@ -32,12 +32,18 @@ export type SyncStatus =
 
 interface SyncContextValue {
   status: SyncStatus;
+  available: boolean;
+  lastSyncedAt: number | null;
   retry: () => void;
+  syncNow: () => void;
 }
 
 const SyncContext = createContext<SyncContextValue>({
   status: "local",
+  available: false,
+  lastSyncedAt: null,
   retry: () => {},
+  syncNow: () => {},
 });
 
 export function useSyncStatus() {
@@ -67,9 +73,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const { user, offline } = useAuth();
   const showToast = useUIStore((state) => state.showToast);
   const [status, setStatus] = useState<SyncStatus>("local");
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const userId = user?.id ?? null;
   const applying = useRef(false);
   const dirty = useRef(false);
+  const manual = useRef(false);
   const timer = useRef<number | null>(null);
   const wasOffline = useRef(offline);
 
@@ -93,9 +101,23 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       setStatus(offline ? "offline" : "error");
+      manual.current = false;
     },
     [offline, showToast],
   );
+
+  const markSynced = useCallback(() => {
+    setLastSyncedAt(Date.now());
+    setStatus("synced");
+    if (manual.current) {
+      manual.current = false;
+      showToast(
+        dirty.current
+          ? "همگام‌سازی شروع شد؛ کمی بعد دوباره سر بزن."
+          : "دفتر با نسخه‌ی ابری یکی شد.",
+      );
+    }
+  }, [showToast]);
 
   const applyRemote = useCallback(
     async (remote: RemoteRow) => {
@@ -105,6 +127,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         data: remote.data,
       });
       if (!migrated) {
+        manual.current = false;
         setStatus("error");
         return;
       }
@@ -113,14 +136,15 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       const accepted = useAppStore.getState().replaceFromRemote(migrated);
       applying.current = false;
       if (!accepted) {
+        manual.current = false;
         setStatus("error");
         return;
       }
       dirty.current = false;
-      if (wasDirty) showToast("نسخه‌ی جدیدتر از دستگاه دیگر آمد.");
-      setStatus("synced");
+      if (wasDirty && !manual.current) showToast("نسخه‌ی جدیدتر از دستگاه دیگر آمد.");
+      markSynced();
     },
-    [showToast],
+    [markSynced, showToast],
   );
 
   const pull = useCallback(async () => {
@@ -143,14 +167,14 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       if (decision === "push") {
         await transport.push(userId, snapshot(state));
         dirty.current = false;
-        setStatus("synced");
+        markSynced();
         return;
       }
-      setStatus("synced");
+      markSynced();
     } catch (error) {
       fail(error);
     }
-  }, [transport, userId, applyRemote, fail]);
+  }, [transport, userId, applyRemote, fail, markSynced]);
 
   const push = useCallback(async () => {
     if (!transport || !userId) return;
@@ -168,11 +192,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       }
       await transport.push(userId, snapshot(state));
       dirty.current = false;
-      setStatus("synced");
+      markSynced();
     } catch (error) {
       fail(error);
     }
-  }, [transport, userId, applyRemote, fail]);
+  }, [transport, userId, applyRemote, fail, markSynced]);
 
   const pullRef = useRef(pull);
   const pushRef = useRef(push);
@@ -230,8 +254,26 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     void pushRef.current();
   }, []);
 
+  const syncNow = useCallback(() => {
+    if (!transport || !userId) {
+      showToast("اول وارد حسابت شو تا دفتر به ابر برسد.");
+      return;
+    }
+    if (timer.current) window.clearTimeout(timer.current);
+    manual.current = true;
+    void pushRef.current();
+  }, [showToast, transport, userId]);
+
   return (
-    <SyncContext.Provider value={{ status: transport ? status : "local", retry }}>
+    <SyncContext.Provider
+      value={{
+        status: transport ? status : "local",
+        available: !!transport && !!userId,
+        lastSyncedAt,
+        retry,
+        syncNow,
+      }}
+    >
       {children}
     </SyncContext.Provider>
   );
