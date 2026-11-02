@@ -50,12 +50,8 @@ function clockKey(date: Date) {
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
-function hourLabel(value: string) {
-  return toFa(Number(value.split(":")[0]));
-}
-
 function windowLabel(start: string, end: string, offset: number) {
-  return `${hourLabel(minutesToTime(timeToMinutes(start) + offset))}–${hourLabel(
+  return `${formatTime(minutesToTime(timeToMinutes(start) + offset))}–${formatTime(
     minutesToTime(timeToMinutes(end) + offset),
   )}`;
 }
@@ -385,7 +381,7 @@ export default function TodayPage() {
     setMode(today, proposalTarget);
     showToast(
       proposalTarget === "late"
-        ? "ریتم دیر چیده شد؛ زبان و برنامه‌نویسی سر جایشان‌اند."
+        ? `ریتم دیر چیده شد؛ بلوک‌های اصلی و رشد سر جایشان‌اند.`
         : "ریتم زود برگشت؛ روز از نو نفس می‌کشد.",
     );
     setProposalTarget(null);
@@ -553,7 +549,7 @@ export default function TodayPage() {
                         {windowLabel(
                           settings.workStart,
                           settings.workEnd,
-                          value === "late" ? 60 : 0,
+                          value === "late" ? settings.lateShiftMinutes : 0,
                         )}
                       </span>
                     </span>
@@ -840,8 +836,8 @@ export default function TodayPage() {
         }
         subtitle={
           proposalTarget === "late"
-            ? "کار و مسیر یک ساعت جلو می‌روند. بلوک‌های کم‌اهمیت جبران می‌شوند؛ زبان و برنامه‌نویسی همیشه می‌مانند."
-            : "همه‌چیز یک ساعت عقب می‌آید و بلوک‌های جبرانی برمی‌گردند."
+            ? `کار و مسیر ${formatDuration(settings.lateShiftMinutes)} جلو می‌روند. بلوک‌های کم‌اهمیت جبران می‌شوند؛ بلوک‌های اصلی و رشد همیشه می‌مانند.`
+            : `همه‌چیز ${formatDuration(settings.lateShiftMinutes)} عقب می‌آید و بلوک‌های جبرانی برمی‌گردند.`
         }
         footer={
           <div className="flex items-center justify-between gap-3">
@@ -874,7 +870,8 @@ export default function TodayPage() {
               <div>
                 <span>تغییر</span>
                 <strong>
-                  {proposalTarget === "late" ? "۱ ساعت جلو" : "۱ ساعت عقب"}
+                  {formatDuration(settings.lateShiftMinutes)}{" "}
+                  {proposalTarget === "late" ? "جلو" : "عقب"}
                 </strong>
               </div>
             </div>

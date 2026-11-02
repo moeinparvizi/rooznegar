@@ -3,11 +3,21 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { AccountCard } from "@/components/account/AccountCard";
+import { useAuth } from "@/components/auth/AuthContext";
 import { Bloom } from "@/components/Bloom";
 import { Icon, type IconName } from "@/components/Icon";
 import { TimeField } from "@/components/settings/TimeField";
+import { SyncBadge } from "@/components/sync/SyncBadge";
+import { useSyncStatus } from "@/components/sync/SyncProvider";
 import { canInstall, isStandalone, promptInstall, subscribeInstall } from "@/lib/pwa";
-import { formatDuration, formatTime, todayKey, toFa, WEEKDAYS } from "@/lib/jalali";
+import {
+  formatDuration,
+  formatTime,
+  shiftTime,
+  todayKey,
+  toFa,
+  WEEKDAYS,
+} from "@/lib/jalali";
 import { useAppStore } from "@/lib/store";
 import { useUIStore } from "@/lib/ui-store";
 import type {
@@ -50,19 +60,19 @@ const MODULES: {
   {
     id: "cefr",
     label: "مسیر زبان (CEFR)",
-    hint: "نوار سطح، پیش‌بینی و ساعت‌های تجمعی زبان.",
+    hint: "نوار سطح و ساعت‌های تجمعی؛ با روشن کردن، بلوک‌های زبان به هفته اضافه می‌شوند.",
     icon: "book",
   },
   {
     id: "linkedin",
     label: "لینکدین",
-    hint: "هدف پست و کامنت، ایده‌ها و تقویم محتوا.",
+    hint: "هدف پست و کامنت و ایده‌ها؛ بلوکش را خودت به هفته اضافه می‌کنی.",
     icon: "linkedin",
   },
   {
     id: "gym",
     label: "باشگاه",
-    hint: "روزهای باشگاه، چرخه‌ی عضله و هدف جلسه‌ها.",
+    hint: "روزهای تمرین را خودت انتخاب می‌کنی؛ تا انتخاب نکنی جلسه‌ای چیده نمی‌شود.",
     icon: "dumbbell",
   },
   {
@@ -153,11 +163,57 @@ function Stepper({
   );
 }
 
+function SyncControls() {
+  const { status, available, lastSyncedAt, syncNow } = useSyncStatus();
+  const { user } = useAuth();
+
+  if (!user || !available) {
+    return (
+      <div className="sync-off">
+        <Icon name="cloudOff" size={16} />
+        <p>
+          همگام‌سازی ابری روشن نیست. با وارد شدن به حسابت، دفترت بین دستگاه‌ها
+          همراهت می‌آید.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="sync-panel">
+      <div className="sync-panel-copy">
+        <strong>همگام‌سازی با سرور</strong>
+        <small>
+          {lastSyncedAt
+            ? `آخرین همگام‌سازی ساعت ${formatTime(
+                new Date(lastSyncedAt).toTimeString().slice(0, 5),
+              )}`
+            : "هنوز همگام‌سازی‌ای ثبت نشده؛ همین حالا بزن."}
+        </small>
+      </div>
+      <div className="sync-panel-actions">
+        <SyncBadge />
+        <button
+          type="button"
+          className="btn btn-outline btn-sm"
+          onClick={syncNow}
+          disabled={status === "syncing"}
+        >
+          <Icon name="refresh" size={14} />
+          همگام‌سازی حالا
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function MePage() {
   const settings = useAppStore((s) => s.settings);
   const days = useAppStore((s) => s.days);
   const reviews = useAppStore((s) => s.reviews);
   const updateSettings = useAppStore((s) => s.updateSettings);
+  const toggleModuleSetting = useAppStore((s) => s.toggleModule);
+  const setGymDays = useAppStore((s) => s.setGymDays);
   const setTheme = useAppStore((s) => s.setTheme);
   const exportJson = useAppStore((s) => s.exportJson);
   const importJson = useAppStore((s) => s.importJson);
@@ -179,28 +235,21 @@ export default function MePage() {
   }, []);
 
   const toggleGymDay = (index: number) => {
-    const active = settings.gymDays.includes(index);
-    const nextDays = active
+    const nextDays = settings.gymDays.includes(index)
       ? settings.gymDays.filter((day) => day !== index)
       : [...settings.gymDays, index].sort((a, b) => a - b);
+    setGymDays(nextDays);
     if (!nextDays.length) {
-      showToast("حداقل یک روز باشگاه بماند؛ بدن به ریتم عادت می‌کند.");
-      return;
+      showToast("روزها خالی شد؛ تا دوباره روز انتخاب نکنی جلسه‌ای چیده نمی‌شود.");
     }
-    updateSettings({
-      gymDays: nextDays,
-      gymPerWeek: nextDays.length,
-    });
   };
 
   const toggleModule = (id: ModuleId) => {
-    updateSettings({
-      modules: { ...settings.modules, [id]: !settings.modules[id] },
-    });
+    toggleModuleSetting(id);
     showToast(
       settings.modules[id]
-        ? "ماژول کنار رفت؛ داده‌هایش دست‌نخورده ماند."
-        : "ماژول برگشت؛ همان لحظه در صفحه‌ها دیده می‌شود.",
+        ? "ماژول خاموش شد؛ بلوک‌هایش از روزها کنار می‌روند و پاک نمی‌شوند."
+        : "ماژول روشن شد؛ بلوک‌های پیش‌فرضش به هفته اضافه شدند.",
     );
   };
 
@@ -378,8 +427,9 @@ export default function MePage() {
           </span>
         </div>
         <p className="mt-2 text-[11.5px] leading-6 text-muted">
-          هر ماژول را که خاموش کنی، صفحه‌هایش کنار می‌روند؛ داده‌های قبلی پاک
-          نمی‌شوند و هر وقت بخواهی برمی‌گردند.
+          حساب تازه بی‌زبان، بی‌لینکدین و بی‌باشگاه شروع می‌شود. هر ماژول را که
+          روشن کنی، بلوک‌هایش به هفته اضافه می‌شود؛ با خاموش کردن فقط از روزها
+          کنار می‌روند و چیزی پاک نمی‌شود.
         </p>
         <div className="switch-list mt-4">
           {MODULES.map((module) => {
@@ -520,6 +570,24 @@ export default function MePage() {
           />
         </div>
 
+        <div className="mt-4">
+          <Stepper
+            label="میزان دیرتر رفتن"
+            value={settings.lateShiftMinutes}
+            min={15}
+            max={180}
+            step={15}
+            suffix="دقیقه"
+            onChange={(lateShiftMinutes) =>
+              updateSettings({ lateShiftMinutes })
+            }
+          />
+          <p className="mt-2 text-[10px] leading-5 text-faint">
+            دکمه‌ی «دیر» در نمای امروز دقیقاً همین مقدار کار و مسیر را جابه‌جا
+            می‌کند. بلوک‌های اصلی و رشد سر جایشان می‌مانند.
+          </p>
+        </div>
+
         {settings.modules.gym && (
           <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--line)" }}>
             <div className="flex items-baseline justify-between gap-3">
@@ -546,8 +614,8 @@ export default function MePage() {
               })}
             </div>
             <p className="mt-2 text-[10px] leading-5 text-faint">
-              روز خالی، حذف نمی‌شود؛ فقط سبک‌تر می‌شود. جبران، پنجشنبه پیشنهاد
-              می‌شود.
+              روزی را که انتخاب نکنی، جلسه‌ی باشگاهش از هفته می‌رود. اگر همه را
+              برداری، تا دوباره روز انتخاب نکنی هیچ جلسه‌ای چیده نمی‌شود.
             </p>
           </div>
         )}
@@ -563,7 +631,7 @@ export default function MePage() {
             روزهای تازه چطور شروع شوند؟
           </h2>
           <p className="mt-2 text-[11.5px] leading-6 text-muted">
-            مبلمان روز یکی است؛ فقط یک ساعت جابه‌جا می‌شود. بلوک‌های اصلی و
+            مبلمان روز یکی است؛ فقط همین اندازه جابه‌جا می‌شود. بلوک‌های اصلی و
             بلوک‌های رشد همیشه سر جایشان می‌مانند.
           </p>
           <div className="mode-options mt-4" role="radiogroup" aria-label="حالت پیش‌فرض روز">
@@ -598,8 +666,11 @@ export default function MePage() {
                 <Icon name="moon" size={17} />
               </span>
               <span>
-                <strong>یک ساعت دیرتر</strong>
-                <small>برای روزهایی که صبح دیر شروع می‌شود</small>
+                <strong>{formatDuration(settings.lateShiftMinutes)} دیرتر</strong>
+                <small>
+                  کار از {formatTime(shiftTime(settings.workStart, settings.lateShiftMinutes))}{" "}
+                  تا {formatTime(shiftTime(settings.workEnd, settings.lateShiftMinutes))}
+                </small>
               </span>
             </button>
           </div>
@@ -859,10 +930,13 @@ export default function MePage() {
           </span>
         </div>
         <p className="mt-2 text-[11.5px] leading-6 text-muted">
-          داده‌های این حساب روی همین دستگاه می‌ماند تا آفلاین هم باز شود.
-          همگام‌سازی ابری در گام بعد اضافه می‌شود؛ تا آن روز هر چند هفته یک
-          نسخه‌ی پشتیبان بگیر.
+          دفترت روی همین دستگاه می‌ماند تا آفلاین هم باز شود. وقتی وارد حسابت
+          شده‌باشی، هر تغییر بعد از چند لحظه به نسخه‌ی ابری تو می‌رسد و از همان
+          حساب روی دستگاه دیگر ادامه می‌دهی. با این حال هر چند هفته یک نسخه‌ی
+          پشتیبان هم بگیر.
         </p>
+
+        <SyncControls />
 
         <div className="data-grid mt-4">
           <button type="button" className="data-action" onClick={downloadBackup}>
