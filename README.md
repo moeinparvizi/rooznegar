@@ -9,7 +9,7 @@
 
 ## دمو و تصاویر
 
-**نسخه‌ی زنده:** [moeinparvizi.github.io/rooznegar](https://moeinparvizi.github.io/rooznegar/) — نسخه‌ی ۱.۱.۰ روی همین آدرس منتشر شده است. ورود و ثبت‌نام به Supabase وصل است و دفتر بین دستگاه‌ها همگام می‌شود؛ فقط رسیدن ایمیل‌ها (کد ورود و بازیابی رمز) به تنظیم SMTP در Supabase نیاز دارد ([راهنمای Supabase](docs/SUPABASE_SETUP.md)).
+**نسخه‌ی زنده:** [moeinparvizi.github.io/rooznegar](https://moeinparvizi.github.io/rooznegar/) — نسخه‌ی ۱.۲.۰ روی همین آدرس منتشر شده است. ورود و ثبت‌نام به Supabase وصل است و دفتر بین دستگاه‌ها همگام می‌شود؛ فقط رسیدن ایمیل‌ها (کد ورود و بازیابی رمز) به تنظیم SMTP در Supabase نیاز دارد ([راهنمای Supabase](docs/SUPABASE_SETUP.md)).
 
 <table>
   <tr>
@@ -31,6 +31,10 @@
   <tr>
     <td align="center"><img src="docs/screenshots/late-shift-sheet-mobile.jpg" width="250" alt="شیت پیشنهاد جابه‌جایی روی ریتم دیر در موبایل"><br><sub>امروز · شیت «دیر» در موبایل</sub></td>
     <td align="center"><img src="docs/screenshots/me-sync-mobile.jpg" width="250" alt="پنل همگام‌سازی دستی و زمان آخرین همگام‌سازی در بخش داده‌ها"><br><sub>من · همگام‌سازی با سرور</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/me-commute-mobile.jpg" width="250" alt="کشوی جدا برای مسیر رفت و برگشت که ساعت‌های هفته را همان لحظه جابه‌جا می‌کند"><br><sub>من · مسیر رفت و برگشت</sub></td>
+    <td align="center"><img src="docs/screenshots/session-editor-mobile.jpg" width="250" alt="شیت ویرایش جلسه برای عوض کردن ساعت، مدت و نوع تمرین همان روز"><br><sub>امروز · ویرایش جلسه</sub></td>
   </tr>
 </table>
 
