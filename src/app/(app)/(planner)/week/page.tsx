@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { categoryMeta } from "@/lib/categories";
 import {
@@ -44,6 +44,21 @@ function blockStateLabel(
   return "ثبت نشده";
 }
 
+function subscribeUrl(onChange: () => void) {
+  window.addEventListener("popstate", onChange);
+  return () => window.removeEventListener("popstate", onChange);
+}
+
+function readDayParam() {
+  const raw = new URLSearchParams(window.location.search).get("day");
+  return raw && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
+}
+
+/** `?day=` comes from the note page; a static export has no useSearchParams. */
+function useDayParam() {
+  return useSyncExternalStore(subscribeUrl, readDayParam, () => null);
+}
+
 export default function WeekPage() {
   const today = useToday();
   const days = useAppStore((s) => s.days);
@@ -54,7 +69,9 @@ export default function WeekPage() {
   const reviews = useAppStore((s) => s.reviews);
   const recoveries = useAppStore((s) => s.recoveries);
   const openReview = useUIStore((s) => s.openReview);
-  const [selected, setSelected] = useState(today);
+  const [picked, setPicked] = useState<string | null>(null);
+  const requested = useDayParam();
+  const selected = picked ?? requested ?? today;
   const now = useNow(60_000);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -228,7 +245,7 @@ export default function WeekPage() {
                   className="heat-day"
                   data-today={day.key === today}
                   data-selected={day.key === selected}
-                  onClick={() => setSelected(day.key)}
+                  onClick={() => setPicked(day.key)}
                   aria-selected={day.key === selected}
                 >
                   <span className="heat-day-name">{day.weekday}</span>
@@ -259,7 +276,7 @@ export default function WeekPage() {
                       className="heat-cell heat-cell-tall"
                       data-state={cell.state}
                       data-selected={day.key === selected}
-                      onClick={() => setSelected(day.key)}
+                      onClick={() => setPicked(day.key)}
                       aria-label={`${day.weekday} ${day.dateLabel}، ${band.label}، ${CELL_LABELS[cell.state]}${
                         cell.total ? `، ${toFa(cell.done)} از ${toFa(cell.total)}` : ""
                       }`}
@@ -325,6 +342,13 @@ export default function WeekPage() {
               )}
             </div>
           </div>
+
+          {requested && selectedDay?.key !== requested && (
+            <p className="shift-note mt-3">
+              لینک به {formatDateWithWeekday(parseDateKey(requested))} اشاره داشت؛
+              نمای هفته فقط هفته‌ی جاری را باز می‌کند، پس همین هفته را نشان می‌دهم.
+            </p>
+          )}
 
           {selectedSchedule ? (
             <div className="day-list mt-4">

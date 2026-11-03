@@ -9,6 +9,7 @@ import { categoryDef } from "./categories";
 import { STORAGE_KEY } from "./defaults";
 import { todayKey, toFa } from "./jalali";
 import { migrateData } from "./migrate";
+import { MAX_COMMENT_LENGTH } from "./notes";
 import { suggestCompensationDate } from "./schedule";
 import { bootstrapStorage } from "./storage";
 import {
@@ -113,6 +114,7 @@ interface StoreState extends AppDataV2 {
   skipBlocks: (date: string, tasks: Task[]) => void;
   scheduleRecovery: (date: string, task: Task) => void;
   addJournal: (date: string, text: string) => void;
+  setBlockComment: (date: string, blockId: string, comment: string) => void;
   logFocus: (log: FocusLog) => void;
   logCommuteLanguage: (date: string, minutes: number) => void;
   logLinkedIn: (date: string, kind: "post" | "comment") => void;
@@ -299,6 +301,20 @@ export const useAppStore = create<StoreState>()(
             ...plan,
             journal: text.trim() || undefined,
           })),
+        ),
+
+      setBlockComment: (date, blockId, comment) =>
+        set((state) =>
+          withDay(state, date, (plan) => {
+            const overrides = { ...plan.overrides };
+            const next = { ...(overrides[blockId] ?? {}) };
+            const text = comment.trim().slice(0, MAX_COMMENT_LENGTH);
+            if (text) next.comment = text;
+            else delete next.comment;
+            if (Object.keys(next).length) overrides[blockId] = next;
+            else delete overrides[blockId];
+            return { ...plan, overrides };
+          }),
         ),
 
       logFocus: ({ date, category, minutes }) =>

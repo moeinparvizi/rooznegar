@@ -17,6 +17,7 @@ const NAV: { href: string; label: string; icon: IconName; hint: string }[] = [
   { href: "/today/", label: "امروز", icon: "today", hint: "یک کار بزرگ" },
   { href: "/week/", label: "هفته", icon: "week", hint: "باغ هفت روز" },
   { href: "/progress/", label: "پیشرفت", icon: "progress", hint: "مسیر و ریتم" },
+  { href: "/notes/", label: "ایده‌ها", icon: "sparkle", hint: "کامنت و ژورنال" },
   { href: "/me/", label: "من", icon: "me", hint: "تنظیم‌ها" },
 ];
 

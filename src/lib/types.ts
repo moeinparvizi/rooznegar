@@ -28,6 +28,7 @@ export interface BlockOverride {
   skipped?: boolean;
   recovered?: boolean;
   movedFrom?: string;
+  comment?: string;
 }
 
 export interface DayPlan {
@@ -41,7 +42,6 @@ export interface DayPlan {
   focusMinutes: number;
   linkedinPosts: number;
   linkedinComments: number;
-  note?: string;
 }
 
 export interface WeekAnswer {

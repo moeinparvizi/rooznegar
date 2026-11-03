@@ -31,6 +31,7 @@ import {
   nextBlock,
   skipCandidates,
 } from "@/lib/schedule";
+import { MAX_COMMENT_LENGTH } from "@/lib/notes";
 import {
   categoryImpact,
   gardenFor,
@@ -90,6 +91,7 @@ function Timeline({
   onOpenFocus,
   onOpenCommute,
   onEditSession,
+  onComment,
   onJournal,
   focusEnabled,
   journalEnabled,
@@ -102,6 +104,7 @@ function Timeline({
   onOpenFocus: (category: Category | "free") => void;
   onOpenCommute: (minutes: number) => void;
   onEditSession: (task: Task) => void;
+  onComment: (blockId: string, text: string) => void;
   onJournal: () => void;
   focusEnabled: boolean;
   journalEnabled: boolean;
@@ -110,6 +113,19 @@ function Timeline({
   const overrides = plan?.overrides ?? {};
   const rows: React.ReactNode[] = [];
   let nowInserted = false;
+  const [commentFor, setCommentFor] = useState<string | null>(null);
+  const [commentDraft, setCommentDraft] = useState("");
+
+  const openComment = (block: Task) => {
+    setCommentFor(block.id);
+    setCommentDraft(block.id === commentFor ? commentDraft : "");
+  };
+
+  const saveComment = (blockId: string) => {
+    onComment(blockId, commentDraft);
+    setCommentFor(null);
+    setCommentDraft("");
+  };
 
   const current = currentBlock(schedule.blocks, overrides, nowMinutes);
 
@@ -194,28 +210,95 @@ function Timeline({
                   <span className="tl-dur">جابه‌جا شده</span>
                 )}
               </div>
-              {(action || isSession) && (
-                <div className="tl-actions">
-                  {action && (
-                    <button
-                      type="button"
-                      className="tl-action"
-                      onClick={action.run}
-                    >
-                      <Icon name={action.icon} size={14} />
-                      {action.label}
-                    </button>
-                  )}
-                  {isSession && (
-                    <button
-                      type="button"
-                      className="tl-action"
-                      onClick={() => onEditSession(block)}
-                    >
-                      <Icon name="pen" size={14} />
-                      ویرایش جلسه
-                    </button>
-                  )}
+              <div className="tl-actions">
+                {action && (
+                  <button
+                    type="button"
+                    className="tl-action"
+                    onClick={action.run}
+                  >
+                    <Icon name={action.icon} size={14} />
+                    {action.label}
+                  </button>
+                )}
+                {isSession && (
+                  <button
+                    type="button"
+                    className="tl-action"
+                    onClick={() => onEditSession(block)}
+                  >
+                    <Icon name="pen" size={14} />
+                    ویرایش جلسه
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="tl-action"
+                  onClick={() => openComment(block)}
+                  aria-expanded={commentFor === block.id}
+                >
+                  <Icon name={override?.comment ? "pen" : "plus"} size={14} />
+                  {override?.comment ? "ویرایش کامنت" : "+ کامنت"}
+                </button>
+              </div>
+              {override?.comment && commentFor !== block.id && (
+                <p className="tl-comment">{override.comment}</p>
+              )}
+              {commentFor === block.id && (
+                <div className="tl-comment-box">
+                  <label className="sr-only" htmlFor={`comment-${block.id}`}>
+                    کامنت {block.title}
+                  </label>
+                  <textarea
+                    id={`comment-${block.id}`}
+                    className="field"
+                    rows={2}
+                    maxLength={MAX_COMMENT_LENGTH}
+                    autoFocus
+                    value={commentDraft}
+                    onChange={(event) => setCommentDraft(event.target.value)}
+                    placeholder="چه چیزی درباره‌ی این کار ماند؟"
+                  />
+                  <div className="tl-comment-foot">
+                    <span className="text-[10.5px] text-faint">
+                      {toFa(commentDraft.length)} از {toFa(MAX_COMMENT_LENGTH)}
+                    </span>
+                    <span className="flex gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => {
+                          setCommentFor(null);
+                          setCommentDraft("");
+                        }}
+                      >
+                        بماند
+                      </button>
+                      {override?.comment && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => {
+                            onComment(block.id, "");
+                            setCommentFor(null);
+                            setCommentDraft("");
+                          }}
+                        >
+                          <Icon name="trash" size={13} />
+                          پاک کن
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={() => saveComment(block.id)}
+                        disabled={!commentDraft.trim()}
+                      >
+                        <Icon name="check" size={13} />
+                        نگه دار
+                      </button>
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
@@ -304,6 +387,7 @@ export default function TodayPage() {
   const setMode = useAppStore((s) => s.setMode);
   const skipBlocks = useAppStore((s) => s.skipBlocks);
   const addJournal = useAppStore((s) => s.addJournal);
+  const setBlockComment = useAppStore((s) => s.setBlockComment);
   const openFocus = useUIStore((s) => s.openFocus);
   const openCommute = useUIStore((s) => s.openCommute);
   const showToast = useUIStore((s) => s.showToast);
@@ -667,6 +751,7 @@ export default function TodayPage() {
               onOpenFocus={openFocus}
               onOpenCommute={openCommute}
               onEditSession={editSession}
+              onComment={(blockId, text) => setBlockComment(today, blockId, text)}
               onJournal={jumpToJournal}
               focusEnabled={modules.focus}
               journalEnabled={modules.journal}
