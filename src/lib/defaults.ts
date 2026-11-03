@@ -23,6 +23,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 export const DEFAULT_SETTINGS_V2: AppSettingsV2 = {
   ...DEFAULT_SETTINGS,
+  // One dial per direction: the way in is rarely the way back.
+  commuteOutMinutes: DEFAULT_SETTINGS.commuteMinutes,
+  commuteBackMinutes: DEFAULT_SETTINGS.commuteMinutes,
   palette: "garden",
   accent: "palette",
   lateEnabled: true,

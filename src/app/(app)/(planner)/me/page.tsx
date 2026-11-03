@@ -6,7 +6,9 @@ import { AccountCard } from "@/components/account/AccountCard";
 import { useAuth } from "@/components/auth/AuthContext";
 import { Bloom } from "@/components/Bloom";
 import { Icon, type IconName } from "@/components/Icon";
+import { Stepper } from "@/components/settings/Stepper";
 import { TimeField } from "@/components/settings/TimeField";
+import { WorkoutTypeField } from "@/components/settings/WorkoutTypeField";
 import { SyncBadge } from "@/components/sync/SyncBadge";
 import { useSyncStatus } from "@/components/sync/SyncProvider";
 import { canInstall, isStandalone, promptInstall, subscribeInstall } from "@/lib/pwa";
@@ -18,6 +20,7 @@ import {
   toFa,
   WEEKDAYS,
 } from "@/lib/jalali";
+import { gymBlocksOfDay } from "@/lib/templates";
 import { useAppStore } from "@/lib/store";
 import { useUIStore } from "@/lib/ui-store";
 import type {
@@ -25,6 +28,7 @@ import type {
   ModuleId,
   NotificationSettings,
   ThemeChoice,
+  WeekdayIndex,
 } from "@/lib/types";
 
 const THEMES: { value: ThemeChoice; label: string; icon: IconName; hint: string }[] = [
@@ -111,58 +115,6 @@ const GARDEN_RULES: {
   },
 ];
 
-function Stepper({
-  label,
-  value,
-  min,
-  max,
-  step,
-  suffix,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  suffix: string;
-  onChange: (next: number) => void;
-}) {
-  const clamp = (next: number) => Math.min(max, Math.max(min, next));
-  return (
-    <div className="stepper-row">
-      <div className="stepper-copy">
-        <strong>{label}</strong>
-        <small>
-          {toFa(min)} تا {toFa(max)} {suffix}
-        </small>
-      </div>
-      <div className="stepper" role="group" aria-label={label}>
-        <button
-          type="button"
-          onClick={() => onChange(clamp(value - step))}
-          disabled={value <= min}
-          aria-label={`کاهش ${label}`}
-        >
-          −
-        </button>
-        <span className="stepper-value num" aria-live="polite">
-          {toFa(value)}
-          <small>{suffix}</small>
-        </span>
-        <button
-          type="button"
-          onClick={() => onChange(clamp(value + step))}
-          disabled={value >= max}
-          aria-label={`افزایش ${label}`}
-        >
-          +
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function SyncControls() {
   const { status, available, lastSyncedAt, syncNow } = useSyncStatus();
   const { user } = useAuth();
@@ -211,7 +163,10 @@ export default function MePage() {
   const settings = useAppStore((s) => s.settings);
   const days = useAppStore((s) => s.days);
   const reviews = useAppStore((s) => s.reviews);
+  const categories = useAppStore((s) => s.categories);
+  const weekTemplate = useAppStore((s) => s.weekTemplate);
   const updateSettings = useAppStore((s) => s.updateSettings);
+  const updateTemplateBlock = useAppStore((s) => s.updateTemplateBlock);
   const toggleModuleSetting = useAppStore((s) => s.toggleModule);
   const setGymDays = useAppStore((s) => s.setGymDays);
   const setTheme = useAppStore((s) => s.setTheme);
@@ -558,16 +513,34 @@ export default function MePage() {
           )}
         </div>
 
-        <div className="mt-4">
+        <div className="mt-4 grid gap-3">
           <Stepper
-            label="مسیر رفت و برگشت"
-            value={settings.commuteMinutes}
-            min={15}
+            label="مسیر رفت"
+            value={settings.commuteOutMinutes}
+            min={5}
             max={120}
-            step={15}
+            step={5}
             suffix="دقیقه"
-            onChange={(commuteMinutes) => updateSettings({ commuteMinutes })}
+            onChange={(commuteOutMinutes) =>
+              updateSettings({ commuteOutMinutes })
+            }
           />
+          <Stepper
+            label="مسیر برگشت"
+            value={settings.commuteBackMinutes}
+            min={5}
+            max={120}
+            step={5}
+            suffix="دقیقه"
+            onChange={(commuteBackMinutes) =>
+              updateSettings({ commuteBackMinutes })
+            }
+          />
+          <p className="text-[10px] leading-5 text-faint">
+            رفت و برگشت تقریباً هیچ‌وقت یکی نیست؛ هر کدام را جدا بچین. با هر لمس،
+            ساعت‌های امروز و هفته همان لحظه جابه‌جا می‌شوند و کارهایی که خودت
+            چیده‌ای دست نمی‌خورند.
+          </p>
         </div>
 
         <div className="mt-4">
@@ -617,6 +590,58 @@ export default function MePage() {
               روزی را که انتخاب نکنی، جلسه‌ی باشگاهش از هفته می‌رود. اگر همه را
               برداری، تا دوباره روز انتخاب نکنی هیچ جلسه‌ای چیده نمی‌شود.
             </p>
+
+            {settings.gymDays.length > 0 && (
+              <div className="mt-4">
+                <p className="field-label">نوع تمرین هر روز</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {settings.gymDays.map((index) => {
+                    const sessions = gymBlocksOfDay(
+                      weekTemplate[index as WeekdayIndex]?.blocks ?? [],
+                      categories,
+                    );
+                    if (sessions.length === 0) {
+                      return (
+                        <div
+                          key={index}
+                          className="flex flex-col gap-1 rounded-[14px] border px-4 py-3"
+                          style={{ borderColor: "var(--line)" }}
+                        >
+                          <strong className="text-[12px]">
+                            {WEEKDAYS[index]}
+                          </strong>
+                          <small className="text-[10px] leading-5 text-faint">
+                            این روز بلوک باشگاهی ندارد؛ از قالب هفته اضافه‌اش کن.
+                          </small>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={index} className="grid gap-3">
+                        {sessions.map((session) => (
+                          <WorkoutTypeField
+                            key={session.id}
+                            label={
+                              sessions.length === 1
+                                ? WEEKDAYS[index]
+                                : `${WEEKDAYS[index]} · ${session.title}`
+                            }
+                            muscle={session.muscle}
+                            onChange={(muscle) =>
+                              updateTemplateBlock(
+                                index as WeekdayIndex,
+                                session.id,
+                                { muscle },
+                              )
+                            }
+                          />
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>

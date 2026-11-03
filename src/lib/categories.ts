@@ -209,6 +209,20 @@ export const MUSCLE_ROTATION = [
   "بازو و شکم",
 ] as const;
 
+/**
+ * The workout a gym day starts with: its place in the user's own week. Days
+ * outside the list still get a label, so a preset can name a session the
+ * planner never scheduled.
+ */
+export function defaultMuscleFor(
+  dayIndex: number,
+  gymDays: readonly number[] = [],
+): string {
+  const ordered = [...gymDays].sort((a, b) => a - b);
+  const position = ordered.includes(dayIndex) ? ordered.indexOf(dayIndex) : dayIndex;
+  return MUSCLE_ROTATION[position % MUSCLE_ROTATION.length];
+}
+
 export const CEFF_LEVELS = [
   { key: "A1", minHours: 0 },
   { key: "A2", minHours: 45 },

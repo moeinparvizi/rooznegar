@@ -1,13 +1,13 @@
 import {
   BUILTIN_CATEGORIES,
   MODULE_ADDON_CATEGORIES,
-  MUSCLE_ROTATION,
+  defaultMuscleFor,
   categoryDef,
   filterByModules,
 } from "./categories";
 import { DEFAULT_SETTINGS_V2 } from "./defaults";
 import { minutesToTime, shiftTime, timeToMinutes, todayKey } from "./jalali";
-import { legacyWeekTemplate } from "./schedule";
+import { commuteDurations, legacyWeekTemplate } from "./schedule";
 import type {
   AppSettingsV2,
   CategoryDef,
@@ -107,8 +107,11 @@ function weeklyReview(start = "16:00"): TemplateBlock {
   );
 }
 
-function athleteDay(dayIndex: WeekdayIndex): TemplateBlock[] {
-  const muscle = MUSCLE_ROTATION[dayIndex % MUSCLE_ROTATION.length];
+function athleteDay(
+  dayIndex: WeekdayIndex,
+  gymDays: readonly number[],
+): TemplateBlock[] {
+  const muscle = defaultMuscleFor(dayIndex, gymDays);
   if (dayIndex === 6) {
     return [
       mk("wake", "بیداری آرام", "rest", "08:30", 45),
@@ -357,7 +360,7 @@ export function presetWeekTemplate(
     const day = index as WeekdayIndex;
     const blocks =
       templateId === "athlete"
-        ? athleteDay(day)
+        ? athleteDay(day, settings.gymDays)
         : templateId === "tailor"
           ? tailorDay(day)
           : templateId === "student"
@@ -451,6 +454,138 @@ export function syncGymBlocks(
     out[day] = { blocks: existing };
   }
   return out;
+}
+
+/**
+ * Blocks the schedule engine lays out itself: `wake`, `commute-in`, `work-am`,
+ * `lunch`, `work-pm`, `commute-out`. Anything else in the week — a block the
+ * user added, a session they moved — keeps its own time.
+ */
+function blockMinutes(block: TemplateBlock): number {
+  return timeToMinutes(block.end) - timeToMinutes(block.start);
+}
+
+function restamp(
+  block: TemplateBlock,
+  start: number,
+  minutes: number,
+): TemplateBlock {
+  return {
+    ...block,
+    start: minutesToTime(start),
+    end: minutesToTime(start + minutes),
+  };
+}
+
+/**
+ * Put the saved week back in line with the rhythm the user just dialled in.
+ * Only the engine-owned blocks move, and only their times: titles, notes,
+ * categories, workout types and flags ride along untouched.
+ */
+export function applyScheduleSettings(
+  template: WeekTemplate,
+  settings: AppSettingsV2,
+): WeekTemplate {
+  const commute = commuteDurations(settings);
+  const workdays = settings.workdays?.length
+    ? settings.workdays
+    : [0, 1, 2, 3, 4];
+  const next = {} as WeekTemplate;
+
+  for (let index = 0; index < 7; index += 1) {
+    const day = index as WeekdayIndex;
+    const blocks = template[day]?.blocks ?? [];
+    if (
+      !workdays.includes(index) ||
+      !blocks.some((block) => block.id === "commute-in")
+    ) {
+      next[day] = { blocks };
+      continue;
+    }
+
+    const byId = new Map(blocks.map((block) => [block.id, block]));
+    const spans = new Map<string, [number, number]>();
+    const workStart = timeToMinutes(settings.workStart);
+    const wayIn = workStart - commute.out;
+    spans.set("commute-in", [wayIn, commute.out]);
+    const wake = byId.get("wake");
+    if (wake) {
+      spans.set("wake", [wayIn - blockMinutes(wake), blockMinutes(wake)]);
+    }
+
+    let cursor = workStart;
+    for (const id of ["work-am", "lunch", "work-pm"] as const) {
+      const block = byId.get(id);
+      if (!block) continue;
+      let minutes = blockMinutes(block);
+      const workEnd = timeToMinutes(settings.workEnd);
+      if (id === "work-pm" && workEnd > cursor) {
+        minutes = workEnd - cursor;
+      }
+      spans.set(id, [cursor, minutes]);
+      cursor += minutes;
+    }
+
+    if (byId.has("commute-out")) {
+      const wayBack = byId.has("work-pm")
+        ? cursor
+        : timeToMinutes(settings.workEnd);
+      spans.set("commute-out", [wayBack, commute.back]);
+    }
+
+    next[day] = {
+      blocks: blocks.map((block) => {
+        const span = spans.get(block.id);
+        if (!span || block.fixed) return block;
+        return restamp(block, span[0], span[1]);
+      }),
+    };
+  }
+
+  return next;
+}
+
+export interface BlockEdit {
+  title?: string;
+  start?: string;
+  minutes?: number;
+  muscle?: string;
+}
+
+/** Edit one saved block in place; everything the patch omits stays as it was. */
+export function editTemplateBlock(
+  block: TemplateBlock,
+  patch: BlockEdit,
+): TemplateBlock {
+  const start = patch.start ?? block.start;
+  const minutes = patch.minutes ?? blockMinutes(block);
+  return {
+    ...block,
+    ...(patch.title ? { title: patch.title } : {}),
+    ...(patch.muscle ? { muscle: patch.muscle } : {}),
+    ...(patch.muscle && block.muscle && block.note?.includes(block.muscle)
+      ? { note: block.note.replace(block.muscle, patch.muscle) }
+      : {}),
+    start,
+    end: shiftTime(start, minutes),
+  };
+}
+
+/**
+ * The workout sessions saved on one weekday. Membership follows the category's
+ * module, so a preset's morning session, an evening gym block and a custom
+ * "شنا" category all count — whatever id each one happens to carry.
+ */
+export function gymBlocksOfDay(
+  blocks: readonly TemplateBlock[],
+  categories?: readonly CategoryDef[],
+): TemplateBlock[] {
+  return blocks
+    .filter(
+      (block) =>
+        categoryDef(block.categoryId, categories).module === "gym",
+    )
+    .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
 }
 
 export function presetCategoryIds(

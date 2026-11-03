@@ -41,9 +41,18 @@ import {
 import { useAppStore, useToday } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
 import { useUIStore } from "@/lib/ui-store";
-import type { Category, DayPlan, DaySchedule, Mode, Task } from "@/lib/types";
+import type {
+  Category,
+  DayPlan,
+  DaySchedule,
+  Mode,
+  Task,
+  TemplateBlock,
+  WeekdayIndex,
+} from "@/lib/types";
 import { Bloom } from "@/components/Bloom";
 import { Icon } from "@/components/Icon";
+import { SessionEditor } from "@/components/SessionEditor";
 import { Sheet } from "@/components/Sheet";
 
 function clockKey(date: Date) {
@@ -80,6 +89,7 @@ function Timeline({
   onToggle,
   onOpenFocus,
   onOpenCommute,
+  onEditSession,
   onJournal,
   focusEnabled,
   journalEnabled,
@@ -90,7 +100,8 @@ function Timeline({
   now: Date;
   onToggle: (task: Task) => void;
   onOpenFocus: (category: Category | "free") => void;
-  onOpenCommute: () => void;
+  onOpenCommute: (minutes: number) => void;
+  onEditSession: (task: Task) => void;
   onJournal: () => void;
   focusEnabled: boolean;
   journalEnabled: boolean;
@@ -118,7 +129,11 @@ function Timeline({
       null;
     if (state === "current") {
       if (block.category === "commute") {
-        action = { label: "حالت مسیر", icon: "headphones", run: onOpenCommute };
+        action = {
+          label: "حالت مسیر",
+          icon: "headphones",
+          run: () => onOpenCommute(block.duration),
+        };
       } else if (focusEnabled && isGrowthCategory(block.category, categories)) {
         action = {
           label: "تمرکز",
@@ -129,6 +144,8 @@ function Timeline({
         action = { label: "یک خط بنویس", icon: "pen", run: onJournal };
       }
     }
+    const isSession =
+      categoryDef(block.category, categories).module === "gym";
 
     rows.push(
       <div className="tl-row" key={block.id}>
@@ -177,16 +194,28 @@ function Timeline({
                   <span className="tl-dur">جابه‌جا شده</span>
                 )}
               </div>
-              {action && (
+              {(action || isSession) && (
                 <div className="tl-actions">
-                  <button
-                    type="button"
-                    className="tl-action"
-                    onClick={action.run}
-                  >
-                    <Icon name={action.icon} size={14} />
-                    {action.label}
-                  </button>
+                  {action && (
+                    <button
+                      type="button"
+                      className="tl-action"
+                      onClick={action.run}
+                    >
+                      <Icon name={action.icon} size={14} />
+                      {action.label}
+                    </button>
+                  )}
+                  {isSession && (
+                    <button
+                      type="button"
+                      className="tl-action"
+                      onClick={() => onEditSession(block)}
+                    >
+                      <Icon name="pen" size={14} />
+                      ویرایش جلسه
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -332,6 +361,10 @@ export default function TodayPage() {
   const [proposalTarget, setProposalTarget] = useState<Mode | null>(null);
   const [skipOpen, setSkipOpen] = useState(false);
   const [skipIds, setSkipIds] = useState<string[]>([]);
+  const [editing, setEditing] = useState<{
+    block: TemplateBlock;
+    shift: number;
+  } | null>(null);
   const [journalDraft, setJournalDraft] = useState(plan?.journal ?? "");
   const [journalSaved, setJournalSaved] = useState(!!plan?.journal);
 
@@ -397,6 +430,19 @@ export default function TodayPage() {
     setSkipIds([]);
   };
 
+  const editSession = (task: Task) => {
+    const day = weekdayIndexFromKey(today) as WeekdayIndex;
+    const block = weekTemplate[day]?.blocks.find((item) => item.id === task.id);
+    if (!block) return;
+    setEditing({
+      block,
+      shift:
+        mode === "late" && block.movable && !block.fixed
+          ? Math.max(0, settings.lateShiftMinutes || 0)
+          : 0,
+    });
+  };
+
   const saveJournal = () => {
     const text = journalDraft.trim();
     if (!text) return;
@@ -417,7 +463,7 @@ export default function TodayPage() {
 
   const nowAction =
     current && current.category === "commute"
-      ? { label: "حالت مسیر", run: openCommute }
+      ? { label: "حالت مسیر", run: () => openCommute(current.duration) }
       : modules.focus &&
           current &&
           isGrowthCategory(current.category, categories)
@@ -620,6 +666,7 @@ export default function TodayPage() {
               onToggle={toggle}
               onOpenFocus={openFocus}
               onOpenCommute={openCommute}
+              onEditSession={editSession}
               onJournal={jumpToJournal}
               focusEnabled={modules.focus}
               journalEnabled={modules.journal}
@@ -998,6 +1045,13 @@ export default function TodayPage() {
           </div>
         )}
       </Sheet>
+
+      <SessionEditor
+        block={editing?.block ?? null}
+        day={weekdayIndexFromKey(today) as WeekdayIndex}
+        shift={editing?.shift ?? 0}
+        onClose={() => setEditing(null)}
+      />
     </div>
   );
 }

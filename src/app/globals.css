@@ -1441,6 +1441,9 @@ textarea.field {
 }
 
 .tl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 10px;
 }
 .tl-action {

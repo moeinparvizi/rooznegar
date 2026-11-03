@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   BUILTIN_CATEGORIES,
   CATEGORIES,
+  MUSCLE_ROTATION,
   categoryDef,
   categoryMeta,
+  defaultMuscleFor,
   filterByModules,
   isGrowthCategory,
   isRestCategory,
@@ -122,5 +124,23 @@ describe("module-gated categories", () => {
         (block) => block.categoryId,
       ),
     ).toEqual(["work"]);
+  });
+});
+
+describe("workout rotation defaults", () => {
+  it("counts the position inside the days the user picked", () => {
+    expect(defaultMuscleFor(0, [0, 2, 4])).toBe(MUSCLE_ROTATION[0]);
+    expect(defaultMuscleFor(2, [0, 2, 4])).toBe(MUSCLE_ROTATION[1]);
+    expect(defaultMuscleFor(4, [0, 2, 4])).toBe(MUSCLE_ROTATION[2]);
+  });
+
+  it("walks the week in day order, not the order the days were picked", () => {
+    expect(defaultMuscleFor(0, [4, 0, 2])).toBe(MUSCLE_ROTATION[0]);
+    expect(defaultMuscleFor(4, [4, 0, 2])).toBe(MUSCLE_ROTATION[2]);
+  });
+
+  it("still labels a day that has no gym slot", () => {
+    expect(defaultMuscleFor(1, [0, 2])).toBe(MUSCLE_ROTATION[1]);
+    expect(defaultMuscleFor(3, [])).toBe(MUSCLE_ROTATION[3 % MUSCLE_ROTATION.length]);
   });
 });

@@ -348,21 +348,27 @@ function FocusTimer() {
 function CommuteMode() {
   const close = useUIStore((s) => s.closeOverlay);
   const showToast = useUIStore((s) => s.showToast);
+  const minutes = useUIStore((s) => s.commuteMinutes);
   const today = useToday();
   const logCommuteLanguage = useAppStore((s) => s.logCommuteLanguage);
   const [choice, setChoice] = useState<"podcast" | "rest" | null>(null);
 
   const done = () => {
     if (choice === "podcast") {
-      logCommuteLanguage(today, 25);
-      showToast("۲۵ دقیقه زبان در مسیر نشست. بدون کلاس، بدون میز.");
+      logCommuteLanguage(today, minutes);
+      showToast(
+        `${formatDuration(minutes)} زبان در مسیر نشست. بدون کلاس، بدون میز.`,
+      );
     } else {
       showToast("استراحت هم بخشی از برنامه است. مسیر خوبی داشته باشی.");
     }
     close();
   };
 
-  const { left, running, toggle, reset, start } = useCountdown(25 * 60, done);
+  const { left, running, toggle, reset, start } = useCountdown(
+    minutes * 60,
+    done,
+  );
 
   const choose = (value: "podcast" | "rest") => {
     setChoice(value);
@@ -371,15 +377,15 @@ function CommuteMode() {
 
   useStageBehaviour(close);
 
-  const elapsed = 25 * 60 - left;
+  const elapsed = minutes * 60 - left;
 
   const finish = () => {
     if (!choice) return;
     if (elapsed >= 60) {
       if (choice === "podcast") {
-        const minutes = Math.round(elapsed / 60);
-        logCommuteLanguage(today, minutes);
-        showToast(`${toFa(minutes)} دقیقه زبان در مسیر ثبت شد.`);
+        const logged = Math.round(elapsed / 60);
+        logCommuteLanguage(today, logged);
+        showToast(`${toFa(logged)} دقیقه زبان در مسیر ثبت شد.`);
       } else {
         showToast("مسیر را استراحت کردی؛ همین هم برنامه است.");
       }
@@ -414,7 +420,7 @@ function CommuteMode() {
           <>
             <div className="text-center">
               <h2 className="text-[24px] font-bold tracking-tight sm:text-[28px]">
-                این ۲۵ دقیقه را چطور می‌گذرانی؟
+                این {formatDuration(minutes)} را چطور می‌گذرانی؟
               </h2>
               <p className="mx-auto mt-2 max-w-md text-[13px] leading-7 text-muted">
                 هر دو انتخاب درست است. یکی زبان را جلو می‌برد، یکی انرژی فردا را.
@@ -430,7 +436,9 @@ function CommuteMode() {
                   <Icon name="headphones" size={26} />
                 </span>
                 <strong>پادکست / سایه‌گویی</strong>
-                <span>۲۵ دقیقه شنیدن و تکرار، بدون فشار.</span>
+                <span>
+                  {formatDuration(minutes)} شنیدن و تکرار، بدون فشار.
+                </span>
               </button>
               <button
                 type="button"
@@ -481,7 +489,7 @@ function CommuteMode() {
               className="mx-auto block text-[11.5px] text-faint transition-colors hover:text-ink"
               onClick={() => {
                 setChoice(null);
-                reset(25 * 60);
+                reset(minutes * 60);
               }}
             >
               تغییر انتخاب

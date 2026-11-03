@@ -1,4 +1,4 @@
-import { MUSCLE_ROTATION, filterByModules, isGrowthCategory } from "./categories";
+import { defaultMuscleFor, filterByModules, isGrowthCategory } from "./categories";
 import {
   formatTime,
   minutesBetween,
@@ -96,15 +96,39 @@ export function modeLabel(settings: AppSettings, mode: Mode): string {
   return `${mode === "early" ? "زود" : "دیر"} · ${formatTime(w.start)} تا ${formatTime(w.end)}`;
 }
 
+const COMMUTE_MIN = 5;
+const COMMUTE_MAX = 120;
+
+export function clampCommuteMinutes(minutes: number): number {
+  if (!Number.isFinite(minutes)) return COMMUTE_MIN;
+  return Math.max(COMMUTE_MIN, Math.min(COMMUTE_MAX, Math.round(minutes)));
+}
+
+/** Plans written before the two dials existed carry one shared commute. */
+export function commuteDurations(
+  settings: AppSettings | AppSettingsV2,
+): { out: number; back: number } {
+  const shared = clampCommuteMinutes(settings.commuteMinutes);
+  const split = settings as Partial<AppSettingsV2>;
+  return {
+    out:
+      typeof split.commuteOutMinutes === "number"
+        ? clampCommuteMinutes(split.commuteOutMinutes)
+        : shared,
+    back:
+      typeof split.commuteBackMinutes === "number"
+        ? clampCommuteMinutes(split.commuteBackMinutes)
+        : shared,
+  };
+}
+
 export function muscleForDate(
   dateKey: string,
   settings: AppSettings,
 ): string | undefined {
   const dayIndex = weekdayIndexFromKey(dateKey);
   if (!settings.gymDays.includes(dayIndex)) return undefined;
-  const ordered = [...settings.gymDays].sort((a, b) => a - b);
-  const position = ordered.indexOf(dayIndex);
-  return MUSCLE_ROTATION[position % MUSCLE_ROTATION.length];
+  return defaultMuscleFor(dayIndex, settings.gymDays);
 }
 
 function recoverableTask(
@@ -138,10 +162,10 @@ function workdaySchedule(
 ): Task[] {
   const blocks: Task[] = [];
   const { start: workStart, end: workEnd } = getModeWindow(settings, mode);
-  const commute = Math.max(15, Math.min(120, settings.commuteMinutes));
+  const { out: commuteOut, back: commuteBack } = commuteDurations(settings);
   const workMinutes = Math.max(240, minutesBetween(workStart, workEnd));
 
-  const wake = shiftTime(workStart, -(commute + 30));
+  const wake = shiftTime(workStart, -(commuteOut + 30));
   blocks.push(
     makeBlock({
       id: "wake",
@@ -158,7 +182,7 @@ function workdaySchedule(
       id: "commute-in",
       title: "مسیر رفت",
       category: "commute",
-      ...at(shiftTime(workStart, -commute), commute),
+      ...at(shiftTime(workStart, -commuteOut), commuteOut),
       movable: true,
       priority: 3,
       note: "پادکست یا سکوت؛ هرچه امروز لازم داری.",
@@ -206,13 +230,13 @@ function workdaySchedule(
     }),
   );
 
-  const commuteOutEnd = shiftTime(workEnd, commute);
+  const commuteOutEnd = shiftTime(workEnd, commuteBack);
   blocks.push(
     makeBlock({
       id: "commute-out",
       title: "مسیر برگشت",
       category: "commute",
-      ...at(workEnd, commute),
+      ...at(workEnd, commuteBack),
       movable: true,
       priority: 3,
       note: "مسیر را به تمرین زبان تبدیل کن.",

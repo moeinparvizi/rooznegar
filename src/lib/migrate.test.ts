@@ -150,6 +150,41 @@ describe("migrateData", () => {
     expect(tooSmall?.settings.lateShiftMinutes).toBe(15);
   });
 
+  it("gives both commute dials the shared minutes an old plan had", () => {
+    const data = migrateData(
+      { ...v1(), settings: { ...v1().settings, commuteMinutes: 30 } },
+      now,
+    );
+    expect(data?.settings.commuteOutMinutes).toBe(30);
+    expect(data?.settings.commuteBackMinutes).toBe(30);
+  });
+
+  it("keeps the two dials a user already split", () => {
+    const first = migrateData(v1(), now);
+    const data = migrateData(
+      {
+        ...first,
+        settings: { ...first?.settings, commuteOutMinutes: 20, commuteBackMinutes: 45 },
+      },
+      now,
+    );
+    expect(data?.settings.commuteOutMinutes).toBe(20);
+    expect(data?.settings.commuteBackMinutes).toBe(45);
+  });
+
+  it("keeps a commute dial inside its own range", () => {
+    const data = migrateData(
+      { ...v1(), settings: { ...v1().settings, commuteMinutes: 300 } },
+      now,
+    );
+    expect(data?.settings.commuteOutMinutes).toBe(120);
+    const tiny = migrateData(
+      { ...v1(), settings: { ...v1().settings, commuteOutMinutes: 2 } },
+      now,
+    );
+    expect(tiny?.settings.commuteOutMinutes).toBe(5);
+  });
+
   it("merges new builtin categories into persisted lists", () => {
     const first = migrateData(v1(), now);
     const data = migrateData(

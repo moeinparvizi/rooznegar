@@ -8,14 +8,17 @@ import { applyAppearance, readAppearance } from "./appearance";
 import { categoryDef } from "./categories";
 import { STORAGE_KEY } from "./defaults";
 import { todayKey, toFa } from "./jalali";
-import { defaultWeekTemplate, migrateData } from "./migrate";
+import { migrateData } from "./migrate";
 import { suggestCompensationDate } from "./schedule";
 import { bootstrapStorage } from "./storage";
 import {
   applyModuleBlocks,
+  applyScheduleSettings,
+  editTemplateBlock,
   ensurePresetCategories,
   presetWeekTemplate,
   syncGymBlocks,
+  type BlockEdit,
 } from "./templates";
 import type { IconName } from "@/components/Icon";
 import type {
@@ -35,6 +38,7 @@ import type {
   ThemeChoice,
   WeekReview,
   WeekTemplate,
+  WeekdayIndex,
 } from "./types";
 
 function emptyPlan(date: string, mode: DayPlan["mode"]): DayPlan {
@@ -53,6 +57,24 @@ function emptyPlan(date: string, mode: DayPlan["mode"]): DayPlan {
 
 function stamp<T extends object>(patch: T): T & { updatedAt: string } {
   return { ...patch, updatedAt: new Date().toISOString() };
+}
+
+const WEEK_CLOCK_KEYS: (keyof AppSettingsV2)[] = [
+  "workStart",
+  "workEnd",
+  "commuteOutMinutes",
+  "commuteBackMinutes",
+  "lateShiftMinutes",
+  "gymStart",
+  "gymDays",
+];
+
+/** The saved week is built from these, so changing one re-stamps the week. */
+function movesTheWeek(patch: Partial<AppSettingsV2>): boolean {
+  return (
+    WEEK_CLOCK_KEYS.some((key) => patch[key] !== undefined) ||
+    patch.modules?.gym !== undefined
+  );
 }
 
 export function applyThemeChoice(theme: ThemeChoice) {
@@ -109,11 +131,15 @@ interface StoreState extends AppDataV2 {
   ) => void;
   removeCategory: (id: string, transferTo: string) => boolean;
   updateWeekTemplate: (template: WeekTemplate) => void;
+  updateTemplateBlock: (
+    day: WeekdayIndex,
+    blockId: string,
+    patch: BlockEdit,
+  ) => void;
   applyTemplate: (templateId: TemplateId) => void;
   initializeForUser: (data: AppDataV2) => void;
   replaceFromRemote: (data: AppDataV2) => boolean;
   saveProfile: (patch: Partial<Profile>) => void;
-  regenerateWeekTemplate: () => void;
   exportJson: () => string;
   importJson: (raw: string) => { ok: boolean; message: string };
   resetDemo: () => void;
@@ -392,7 +418,14 @@ export const useAppStore = create<StoreState>()(
               ...(patch.modules ?? {}),
             },
           };
-          return stamp({ settings: next });
+          const changes: Partial<StoreState> = { settings: next };
+          if (movesTheWeek(patch)) {
+            changes.weekTemplate = applyScheduleSettings(
+              state.weekTemplate,
+              next,
+            );
+          }
+          return stamp(changes);
         });
         if (
           patch.theme !== undefined ||
@@ -546,10 +579,17 @@ export const useAppStore = create<StoreState>()(
           stamp({ profile: { ...state.profile, ...patch } }),
         ),
 
-      regenerateWeekTemplate: () =>
-        set((state) =>
-          stamp({ weekTemplate: defaultWeekTemplate(state.settings) }),
-        ),
+      updateTemplateBlock: (day, blockId, patch) =>
+        set((state) => {
+          const entry = state.weekTemplate[day];
+          if (!entry) return {};
+          const blocks = entry.blocks.map((block) =>
+            block.id === blockId ? editTemplateBlock(block, patch) : block,
+          );
+          return stamp({
+            weekTemplate: { ...state.weekTemplate, [day]: { blocks } },
+          });
+        }),
 
       exportJson: () => {
         const state = get();

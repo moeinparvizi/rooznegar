@@ -1,4 +1,10 @@
-import { CEFF_LEVELS, MUSCLE_ROTATION, categoryDef, isRestCategory } from "./categories";
+import {
+  CEFF_LEVELS,
+  MUSCLE_ROTATION,
+  categoryDef,
+  defaultMuscleFor,
+  isRestCategory,
+} from "./categories";
 import {
   addDaysKey,
   formatDateShort,
@@ -448,7 +454,12 @@ export function focusSeries(
 export interface GymStats {
   sessions: number;
   target: number;
-  planned: { dayName: string; key: string; state: "done" | "missed" | "upcoming" | "today" }[];
+  planned: {
+    dayName: string;
+    key: string;
+    state: "done" | "missed" | "upcoming" | "today";
+    muscle: string;
+  }[];
   missed: { dayName: string; key: string }[];
   nextMuscle: string;
   compensationDate: string;
@@ -473,13 +484,26 @@ export function gymStats(data: PlannerData, today: string): GymStats {
       else if (key === today) state = "today";
       else if (key < today) state = "missed";
       else state = "upcoming";
-      return { dayName: dayNames[idx], key, state };
+      return {
+        dayName: dayNames[idx],
+        key,
+        state,
+        // The day's own session wins: a workout type the user set by hand has
+        // to survive the rotation that only ever picks a starting label.
+        muscle:
+          gymBlock?.muscle ?? defaultMuscleFor(idx, data.settings.gymDays),
+      };
     });
   const sessions = planned.filter((p) => p.state === "done").length;
   const missed = planned
     .filter((p) => p.state === "missed")
     .map((p) => ({ dayName: p.dayName, key: p.key }));
-  const nextMuscle = MUSCLE_ROTATION[sessions % MUSCLE_ROTATION.length];
+  // The promise has to match the label the session itself carries.
+  const comingUp = planned.find(
+    (p) => p.state === "today" || p.state === "upcoming",
+  );
+  const nextSession = comingUp ?? planned.find((p) => p.state !== "done");
+  const nextMuscle = nextSession ? nextSession.muscle : MUSCLE_ROTATION[0];
   const compensationDate = suggestCompensationDate(today);
   const compensationLabel = formatDateWithWeekday(parseDateKey(compensationDate));
 

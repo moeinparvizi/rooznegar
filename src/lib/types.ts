@@ -202,6 +202,8 @@ export interface TemplateBlock {
 export type WeekTemplate = Record<WeekdayIndex, { blocks: TemplateBlock[] }>;
 
 export interface AppSettingsV2 extends AppSettings {
+  commuteOutMinutes: number;
+  commuteBackMinutes: number;
   palette: PaletteId;
   accent: AccentChoice;
   lateEnabled: boolean;

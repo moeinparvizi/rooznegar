@@ -1,6 +1,7 @@
 import { BUILTIN_CATEGORIES } from "./categories";
 import { DEFAULT_SETTINGS_V2 } from "./defaults";
 import { todayKey } from "./jalali";
+import { clampCommuteMinutes } from "./schedule";
 import { presetWeekTemplate } from "./templates";
 import type {
   AppDataV2,
@@ -26,6 +27,10 @@ function unwrap(raw: unknown): Rec | null {
   if (isRecord(raw.state)) return raw.state;
   if (isRecord(raw.data)) return raw.data;
   return raw;
+}
+
+function isStoredNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 const PALETTES = new Set([
@@ -121,6 +126,16 @@ function normalizeSettings(raw: unknown): AppSettingsV2 {
   if (!BLOOM_STYLES.has(String(out.bloomStyle))) out.bloomStyle = "auto";
   if (!Number.isFinite(out.lateShiftMinutes)) out.lateShiftMinutes = 60;
   out.lateShiftMinutes = Math.min(180, Math.max(15, out.lateShiftMinutes));
+  // A plan written before the split had one shared commute; both directions
+  // inherit it until the user dials them apart.
+  const stored = isRecord(raw) ? raw : {};
+  const shared = clampCommuteMinutes(Number(out.commuteMinutes));
+  out.commuteOutMinutes = isStoredNumber(stored.commuteOutMinutes)
+    ? clampCommuteMinutes(stored.commuteOutMinutes)
+    : shared;
+  out.commuteBackMinutes = isStoredNumber(stored.commuteBackMinutes)
+    ? clampCommuteMinutes(stored.commuteBackMinutes)
+    : shared;
   return out as AppSettingsV2;
 }
 
