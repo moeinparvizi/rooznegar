@@ -100,7 +100,7 @@ dropdb rz_rls_test
   https://moeinparvizi.github.io/rooznegar/
   ```
 
-Supabase دیگر فهرست «Redirect URLs» را در داشبورد نگه نمی‌دارد؛ لینک ایمیل به `redirect_to` خود اپ می‌رود و اگر آن آدرس با پیشوند Site URL هم‌خوان نباشد، Supabase بی‌صدا به Site URL برمی‌گردد. روزنگار `redirect_to` را از همان `window.location.origin` + basePath می‌سازد، پس:
+در **Authentication → URL Configuration → Redirect URLs** آدرس بازگشت زیر را نیز به فهرست مجاز اضافه کن. اگر نشانی بازگشت مجاز نباشد، Supabase از Site URL استفاده می‌کند. روزنگار نشانی بازگشت را از `window.location.origin` و basePath می‌سازد:
 
 - روی GitHub Pages: `https://moeinparvizi.github.io/rooznegar/auth/`
 - روی localhost: `http://localhost:3000/auth/` (تست محلی لینک به هر حال به Site URL می‌رود؛ برای لینک، نسخه‌ی منتشرشده را تست کن.)

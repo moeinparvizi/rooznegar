@@ -94,7 +94,7 @@ export function createSupabaseAuth(url: string, anonKey: string): AuthClient {
     async signInWithCode(email) {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { shouldCreateUser: true },
+        options: { shouldCreateUser: true, emailRedirectTo: authRedirect() },
       });
       return error ? mapAuthError(error) : { ok: true };
     },
@@ -124,12 +124,12 @@ export function createSupabaseAuth(url: string, anonKey: string): AuthClient {
     async resendCode(email, intent: AuthIntent) {
       if (intent === "recovery") return sendRecovery(email);
       if (intent === "signup") {
-        const { error } = await supabase.auth.resend({ type: "signup", email });
+        const { error } = await supabase.auth.resend({ type: "signup", email, options: { emailRedirectTo: authRedirect() } });
         return error ? mapAuthError(error) : { ok: true };
       }
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { shouldCreateUser: true },
+        options: { shouldCreateUser: true, emailRedirectTo: authRedirect() },
       });
       return error ? mapAuthError(error) : { ok: true };
     },

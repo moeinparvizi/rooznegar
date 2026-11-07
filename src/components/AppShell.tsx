@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth/AuthContext";
 import { useAppStore, useIsReady, useToday } from "@/lib/store";
 import { gardenFor, streakOf } from "@/lib/stats";
 import { toFa } from "@/lib/jalali";
+import { rtlTabPosition } from "@/lib/tab-drag";
 import { BrandMark, BrandWord } from "./Brand";
 import { Bloom } from "./Bloom";
 import { Icon, type IconName } from "./Icon";
@@ -250,16 +251,57 @@ function MobileTopBar() {
 
 function MobileTabBar() {
   const path = usePath();
+  const router = useRouter();
+  const gesture = useRef<{ id: number; startX: number; dragging: boolean } | null>(null);
+  const suppressClick = useRef(false);
+  const [position, setPosition] = useState<number | null>(null);
   const activeIndex = Math.max(
     0,
     NAV.findIndex((item) => isActive(path, item.href)),
   );
   return (
-    <nav className="mobile-tabbar" aria-label="پیمایش اصلی">
+    <nav
+      className="mobile-tabbar"
+      aria-label="پیمایش اصلی"
+      data-dragging={position !== null}
+      onPointerDown={(event) => {
+        if (!event.isPrimary || event.button !== 0) return;
+        const target = event.target as Element;
+        if (!target.closest('.tab-item[data-active="true"]')) return;
+        gesture.current = { id: event.pointerId, startX: event.clientX, dragging: false };
+      }}
+      onPointerMove={(event) => {
+        const current = gesture.current;
+        if (!current || current.id !== event.pointerId) return;
+        if (!current.dragging && Math.abs(event.clientX - current.startX) < 8) return;
+        if (!current.dragging) {
+          current.dragging = true;
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }
+        const bounds = event.currentTarget.getBoundingClientRect();
+        setPosition(rtlTabPosition(event.clientX, bounds.left + 6, bounds.width - 12, NAV.length));
+      }}
+      onPointerUp={(event) => {
+        const current = gesture.current;
+        if (!current || current.id !== event.pointerId) return;
+        gesture.current = null;
+        if (!current.dragging) return;
+        const bounds = event.currentTarget.getBoundingClientRect();
+        const target = Math.round(rtlTabPosition(event.clientX, bounds.left + 6, bounds.width - 12, NAV.length));
+        suppressClick.current = true;
+        window.setTimeout(() => { suppressClick.current = false; }, 0);
+        setPosition(null);
+        if (target !== activeIndex) router.push(NAV[target].href);
+      }}
+      onPointerCancel={() => { gesture.current = null; setPosition(null); }}
+      onClickCapture={(event) => {
+        if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); }
+      }}
+    >
       <span
         aria-hidden
         className="lg-bubble tab-bubble"
-        style={{ "--i": activeIndex, "--n": NAV.length } as React.CSSProperties}
+        style={{ "--i": position ?? activeIndex, "--n": NAV.length } as React.CSSProperties}
       />
       {NAV.map((item) => {
         const active = isActive(path, item.href);
