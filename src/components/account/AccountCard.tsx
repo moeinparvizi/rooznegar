@@ -21,7 +21,8 @@ export function AccountCard() {
   const [draftName, setDraftName] = useState(profile.name);
   const [draftAvatar, setDraftAvatar] = useState(profile.avatarEmoji || AVATARS[0]);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<"signout" | "erase" | null>(null);
+  const busy = pending !== null;
 
   if (!user) return null;
 
@@ -51,7 +52,7 @@ export function AccountCard() {
   };
 
   const signOut = async () => {
-    setBusy(true);
+    setPending("signout");
     try {
       await client.signOut();
     } finally {
@@ -60,7 +61,7 @@ export function AccountCard() {
   };
 
   const erase = async () => {
-    setBusy(true);
+    setPending("erase");
     try {
       await removeUserData(user.id);
       await client.signOut();
@@ -176,9 +177,10 @@ export function AccountCard() {
           className="btn btn-outline btn-sm"
           onClick={() => void signOut()}
           disabled={busy}
+          aria-busy={pending === "signout"}
         >
-          <Icon name="logout" size={15} />
-          خروج
+          {pending !== "signout" && <Icon name="logout" size={15} />}
+          {pending === "signout" ? "در حال خروج…" : "خروج"}
         </button>
         <button
           type="button"
@@ -212,8 +214,9 @@ export function AccountCard() {
               className="btn btn-sm btn-danger"
               onClick={() => void erase()}
               disabled={busy}
+              aria-busy={pending === "erase"}
             >
-              بله، خارج شو و پاک کن
+              {pending === "erase" ? "در حال پاک‌کردن…" : "بله، خارج شو و پاک کن"}
             </button>
             <button
               type="button"

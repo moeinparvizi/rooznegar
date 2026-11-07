@@ -279,6 +279,34 @@ h4 {
 
 /* ---------- controls ---------- */
 
+button:not(:disabled):active {
+  filter: brightness(0.9);
+}
+
+.btn[aria-busy="true"]::before,
+.auth-link[aria-busy="true"]::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: button-spin 700ms linear infinite;
+}
+
+@keyframes button-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn[aria-busy="true"]::before,
+  .auth-link[aria-busy="true"]::before {
+    animation-duration: 1.8s;
+  }
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

@@ -54,7 +54,8 @@ export function AuthScreen() {
   const [code, setCode] = useState("");
   const [codeHint, setCodeHint] = useState("کد را وارد کن.");
   const [codeKey, setCodeKey] = useState(0);
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<"request" | "resend" | null>(null);
+  const busy = pending !== null;
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [demoCode, setDemoCode] = useState<string | null>(null);
@@ -86,9 +87,9 @@ export function AuthScreen() {
     return () => window.clearTimeout(timer);
   }, [cooldown]);
 
-  const run = async (action: () => Promise<void>) => {
+  const run = async (action: () => Promise<void>, kind: "request" | "resend" = "request") => {
     if (busy) return;
-    setBusy(true);
+    setPending(kind);
     setError(null);
     setNotice(null);
     try {
@@ -96,7 +97,7 @@ export function AuthScreen() {
     } catch {
       setError("مشکلی پیش آمد. یک لحظه بعد دوباره تلاش کن.");
     } finally {
-      setBusy(false);
+      setPending(null);
     }
   };
 
@@ -207,7 +208,7 @@ export function AuthScreen() {
       setCodeKey((value) => value + 1);
       setCooldown(45);
       setNotice(link ? linkNotice(intent) : "کد تازه فرستاده شد.");
-    });
+    }, "resend");
 
   const savePassword = () =>
     run(async () => {
@@ -446,6 +447,7 @@ export function AuthScreen() {
                 type="submit"
                 className="btn btn-primary auth-submit"
                 disabled={busy || unavailable}
+                aria-busy={pending === "request"}
               >
                 {busy
                   ? "یک لحظه…"
@@ -536,6 +538,7 @@ export function AuthScreen() {
               type="submit"
               className="btn btn-primary auth-submit"
               disabled={busy || unavailable}
+              aria-busy={pending === "request"}
             >
               {busy
                 ? "یک لحظه…"
@@ -603,8 +606,9 @@ export function AuthScreen() {
               className="btn btn-primary auth-submit"
               onClick={() => void verify()}
               disabled={busy || code.length !== 6}
+              aria-busy={pending === "request"}
             >
-              {busy ? "یک لحظه…" : "تایید و ورود"}
+              {pending === "request" ? "یک لحظه…" : "تایید و ورود"}
             </button>
 
             <div className="auth-code-actions">
@@ -613,8 +617,9 @@ export function AuthScreen() {
                 className="auth-link"
                 onClick={() => void resend()}
                 disabled={busy || cooldown > 0}
+                aria-busy={pending === "resend"}
               >
-                {cooldown > 0
+                {pending === "resend" ? "در حال ارسال…" : cooldown > 0
                   ? `ارسال دوباره در ${toFa(cooldown)}`
                   : "ارسال دوباره کد"}
               </button>
@@ -667,8 +672,9 @@ export function AuthScreen() {
                 className="auth-link"
                 onClick={() => void resend()}
                 disabled={busy || cooldown > 0}
+                aria-busy={pending === "resend"}
               >
-                {cooldown > 0
+                {pending === "resend" ? "در حال ارسال…" : cooldown > 0
                   ? `ارسال دوباره در ${toFa(cooldown)}`
                   : "فرستادن دوباره‌ی ایمیل"}
               </button>
@@ -765,6 +771,7 @@ export function AuthScreen() {
               type="submit"
               className="btn btn-primary auth-submit"
               disabled={busy || unavailable}
+              aria-busy={pending === "request"}
             >
               {busy ? "یک لحظه…" : "ذخیره‌ی رمز و ورود"}
             </button>
