@@ -62,6 +62,7 @@ const THEMES = new Set(["light", "dark", "system"]);
 const MODES = new Set(["early", "late"]);
 const GARDEN_RULES = new Set(["one", "half", "core"]);
 const BLOOM_STYLES = new Set(["auto", "cream", "gold", "leaf"]);
+const MOOD_LEVELS = new Set([1, 2, 3, 4, 5]);
 
 function normalizeSettings(raw: unknown): AppSettingsV2 {
   const out = { ...DEFAULT_SETTINGS_V2 } as AppSettingsV2 & Rec;
@@ -211,9 +212,12 @@ function normalizeDays(raw: unknown): Record<string, DayPlan> {
   if (!isRecord(raw)) return {};
   const days: Record<string, DayPlan> = {};
   for (const [key, value] of Object.entries(raw)) {
-    if (isRecord(value) && isRecord(value.overrides)) {
-      days[key] = value as unknown as DayPlan;
-    }
+    if (!isRecord(value) || !isRecord(value.overrides)) continue;
+    const { mood, ...plan } = value;
+    // A level off the ladder is a corrupt write, not a mood anyone chose.
+    days[key] = (
+      MOOD_LEVELS.has(mood as number) ? { ...plan, mood } : plan
+    ) as unknown as DayPlan;
   }
   return days;
 }
@@ -236,11 +240,11 @@ export function migrateData(input: unknown, now: Date = new Date()): AppDataV2 |
       }
     : { name: "" };
   const weekTemplate =
-    root.schemaVersion === 2
+    (root.schemaVersion === 2 || root.schemaVersion === 3)
       ? normalizeWeekTemplate(root.weekTemplate, settings)
       : defaultWeekTemplate(settings);
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     updatedAt:
       typeof root.updatedAt === "string" ? root.updatedAt : now.toISOString(),
     profile,

@@ -128,6 +128,10 @@ function SideRailGarden() {
 function SideRail() {
   const path = usePath();
   const profile = useAppStore((s) => s.profile);
+  const activeIndex = Math.max(
+    0,
+    NAV.findIndex((item) => isActive(path, item.href)),
+  );
 
   return (
     <aside className="side-rail">
@@ -149,7 +153,16 @@ function SideRail() {
         </div>
       </div>
 
-      <nav aria-label="پیمایش اصلی" className="flex flex-col gap-1">
+      <nav
+        aria-label="پیمایش اصلی"
+        className="rail-nav"
+        style={{ "--n": NAV.length } as React.CSSProperties}
+      >
+        <span
+          aria-hidden
+          className="lg-bubble rail-bubble"
+          style={{ "--i": activeIndex } as React.CSSProperties}
+        />
         {NAV.map((item) => {
           const active = isActive(path, item.href);
           return (
@@ -159,7 +172,6 @@ function SideRail() {
               aria-current={active ? "page" : undefined}
               className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] transition-colors"
               style={{
-                background: active ? "var(--green-wash)" : "transparent",
                 color: active ? "var(--green-deep)" : "var(--ink-2)",
                 fontWeight: active ? 650 : 500,
               }}
@@ -238,8 +250,17 @@ function MobileTopBar() {
 
 function MobileTabBar() {
   const path = usePath();
+  const activeIndex = Math.max(
+    0,
+    NAV.findIndex((item) => isActive(path, item.href)),
+  );
   return (
     <nav className="mobile-tabbar" aria-label="پیمایش اصلی">
+      <span
+        aria-hidden
+        className="lg-bubble tab-bubble"
+        style={{ "--i": activeIndex, "--n": NAV.length } as React.CSSProperties}
+      />
       {NAV.map((item) => {
         const active = isActive(path, item.href);
         return (
@@ -276,7 +297,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         رفتن به محتوای اصلی
       </a>
       <SideRail />
-      <div className="min-w-0">
+      <div className="app-window-main">
         <MobileTopBar />
         {offline && status === "signedIn" && (
           <div className="offline-banner" role="status">

@@ -30,6 +30,7 @@ import type {
   CategoryDef,
   DayPlan,
   DaySchedule,
+  MoodValue,
   WeekTemplate,
 } from "./types";
 
@@ -451,6 +452,99 @@ export function focusSeries(
   });
 }
 
+export interface DayPoint {
+  key: string;
+  label: string;
+  weekday: string;
+  value: number | null;
+}
+
+/** One ladder for both mood sources: the daily level and the Thursday energy. */
+export const MOOD_LABELS = ["خسته", "کم", "معمولی", "خوب", "سرحال"];
+
+export function moodLabel(value: number | null): string {
+  if (value === null) return "ثبت‌نشده";
+  return MOOD_LABELS[Math.min(4, Math.max(0, Math.round(value) - 1))];
+}
+
+function recentDayKeys(today: string, count: number) {
+  return Array.from({ length: count }, (_, i) => {
+    const key = addDaysKey(today, -(count - 1 - i));
+    return {
+      key,
+      label: formatDateShort(parseDateKey(key)),
+      weekday: formatDateWithWeekday(parseDateKey(key)).split("،")[0],
+    };
+  });
+}
+
+/** `null` is a gap in the chart; `0` is a day that ran and did nothing. */
+export function moodSeries(
+  days: Record<string, DayPlan>,
+  today: string,
+  count = 14,
+): DayPoint[] {
+  return recentDayKeys(today, count).map((point) => ({
+    ...point,
+    value: days[point.key]?.mood ?? null,
+  }));
+}
+
+export function completionSeries(
+  data: PlannerData,
+  today: string,
+  count = 14,
+): DayPoint[] {
+  return recentDayKeys(today, count).map((point) => {
+    const plan = data.days[point.key];
+    if (!plan) return { ...point, value: null };
+    const schedule = scheduleFor(data, point.key);
+    const cells = BANDS.map((band) =>
+      cellFor(
+        schedule,
+        plan,
+        point.key,
+        today,
+        band.from,
+        band.to,
+        data.categories,
+      ),
+    );
+    const total = cells.reduce((sum, cell) => sum + cell.total, 0);
+    if (!total) return { ...point, value: null };
+    const done = cells.reduce((sum, cell) => sum + cell.done, 0);
+    return { ...point, value: Math.round((done / total) * 100) };
+  });
+}
+
+export interface MoodTrendPoint {
+  label: string;
+  value: number | null;
+  current: boolean;
+}
+
+export function moodTrendSeries(
+  days: Record<string, DayPlan>,
+  today: string,
+  count = 4,
+): MoodTrendPoint[] {
+  const currentWeek = startOfWeekKey(parseDateKey(today));
+  return Array.from({ length: count }, (_, i) => {
+    const offset = count - 1 - i;
+    const start = addDaysKey(currentWeek, -7 * offset);
+    const levels = weekDayKeys(start)
+      .map((key) => days[key]?.mood)
+      .filter((mood): mood is MoodValue => mood !== undefined);
+    return {
+      label: formatDateShort(parseDateKey(start)),
+      value: levels.length
+        ? Math.round((levels.reduce((a, b) => a + b, 0) / levels.length) * 10) / 10
+        : null,
+      current: offset === 0,
+    };
+  });
+}
+
 export interface GymStats {
   sessions: number;
   target: number;
@@ -607,7 +701,7 @@ export function categoryImpact(
 }
 
 export function dayNumberLabel(key: string): string {
-  return toFa(parseDateKey(key).getDate());
+  return formatDateShort(parseDateKey(key)).split(" ")[0];
 }
 
 export function muscleForToday(data: PlannerData, today: string) {

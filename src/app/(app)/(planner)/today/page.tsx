@@ -33,8 +33,10 @@ import {
 } from "@/lib/schedule";
 import { MAX_COMMENT_LENGTH } from "@/lib/notes";
 import {
+  MOOD_LABELS,
   categoryImpact,
   gardenFor,
+  moodLabel,
   streakOf,
   todayBlocksFor,
   weekSummary,
@@ -47,6 +49,7 @@ import type {
   DayPlan,
   DaySchedule,
   Mode,
+  MoodValue,
   Task,
   TemplateBlock,
   WeekdayIndex,
@@ -387,6 +390,7 @@ export default function TodayPage() {
   const setMode = useAppStore((s) => s.setMode);
   const skipBlocks = useAppStore((s) => s.skipBlocks);
   const addJournal = useAppStore((s) => s.addJournal);
+  const setMood = useAppStore((s) => s.setMood);
   const setBlockComment = useAppStore((s) => s.setBlockComment);
   const openFocus = useUIStore((s) => s.openFocus);
   const openCommute = useUIStore((s) => s.openCommute);
@@ -543,6 +547,12 @@ export default function TodayPage() {
     document
       .getElementById("journal")
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const pickMood = (level: MoodValue) => {
+    const next = plan?.mood === level ? null : level;
+    setMood(today, next);
+    showToast(next ? `حال امروز: ${moodLabel(next)}.` : "حال امروز پاک شد.");
   };
 
   const nowAction =
@@ -856,6 +866,48 @@ export default function TodayPage() {
             </div>
           </section>
           )}
+
+          <section aria-labelledby="mood-heading" className="mt-9">
+            <div className="surface mood-card">
+              <p className="eyebrow">
+                <Icon name="sparkle" size={13} />
+                حال امروز
+              </p>
+              <h2 id="mood-heading" className="mt-1.5 text-[17px] font-bold">
+                {plan?.mood
+                  ? `امروز ${moodLabel(plan.mood)} بودی.`
+                  : "امروز چطور بودی؟"}
+              </h2>
+              <div
+                className="mt-5 flex items-center justify-between gap-2"
+                role="group"
+                aria-label="حال امروز را روی پله‌ی ۱ تا ۵ بگذار"
+              >
+                {([1, 2, 3, 4, 5] as MoodValue[]).map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    className="energy-btn"
+                    data-active={plan?.mood === level}
+                    aria-pressed={plan?.mood === level}
+                    aria-label={MOOD_LABELS[level - 1]}
+                    onClick={() => pickMood(level)}
+                  >
+                    {toFa(level)}
+                  </button>
+                ))}
+              </div>
+              <div className="mood-scale mt-3">
+                <span>خسته</span>
+                <span>سرحال</span>
+              </div>
+              <p className="mood-hint mt-3">
+                {plan?.mood
+                  ? "برای عوض کردن پله‌ی دیگر را بزن؛ همان پله را که دوباره بزنی پاک می‌شود."
+                  : "بی‌حال هم روز حساب می‌شود؛ فقط جای‌اش روی نمودار خالی می‌ماند."}
+              </p>
+            </div>
+          </section>
         </div>
 
         <aside className="today-aside" aria-label="نگاه سریع به امروز">

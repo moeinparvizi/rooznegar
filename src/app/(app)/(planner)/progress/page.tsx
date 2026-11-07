@@ -15,12 +15,17 @@ import {
   WEEKDAYS,
 } from "@/lib/jalali";
 import {
+  MOOD_LABELS,
   bloomOf,
   cefrStats,
+  completionSeries,
   focusSeries,
   gymStats,
   languageSeries,
   linkedinStats,
+  moodLabel,
+  moodSeries,
+  moodTrendSeries,
   streakOf,
   weekSummary,
 } from "@/lib/stats";
@@ -28,6 +33,7 @@ import { useAppStore, useToday } from "@/lib/store";
 import { useUIStore } from "@/lib/ui-store";
 import { Bloom } from "@/components/Bloom";
 import { Icon } from "@/components/Icon";
+import { MoodChart } from "@/components/MoodChart";
 
 function BarChart({
   points,
@@ -119,6 +125,20 @@ export default function ProgressPage() {
     () => streakOf(days, today, data),
     [days, today, data],
   );
+  const completion = useMemo(
+    () => completionSeries(data, today, 14),
+    [data, today],
+  );
+  const mood = useMemo(() => moodSeries(days, today, 14), [days, today]);
+  const moodTrend = useMemo(
+    () => moodTrendSeries(days, today, 4),
+    [days, today],
+  );
+  const chartDays = completion.filter(
+    (point, index) => point.value !== null || mood[index]?.value !== null,
+  ).length;
+  const weekStart = startOfWeekKey(parseDateKey(today));
+  const todayMood = mood.at(-1)?.value ?? null;
 
   const gardenStart = addDaysKey(startOfWeekKey(parseDateKey(today)), -21);
   const gardenDays = useMemo(
@@ -185,6 +205,69 @@ export default function ProgressPage() {
           )}
         </div>
       </header>
+
+      <section className="surface mt-6 p-5 sm:p-6" aria-labelledby="mood-heading">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="eyebrow">
+              <Icon name="sparkle" size={13} />
+              حال و انجام کار
+            </p>
+            <h2 id="mood-heading" className="mt-1.5 text-[16px] font-bold">
+              چهارده روز اخیر
+            </h2>
+          </div>
+          <p className="text-[11px] text-muted">
+            {todayMood === null
+              ? "حال امروز را در نمای امروز ثبت کن"
+              : `حال امروز: ${moodLabel(todayMood)}`}
+          </p>
+        </div>
+
+        {chartDays >= 3 ? (
+          <>
+            <MoodChart completion={completion} mood={mood} />
+
+            <p className="eyebrow mt-7">روند حال در چهار هفته</p>
+            <div className="trend-row mt-3">
+              {moodTrend.map((point, index) => {
+                const start = addDaysKey(
+                  weekStart,
+                  -7 * (moodTrend.length - 1 - index),
+                );
+                const review = reviews.find((item) => item.weekStart === start);
+                return (
+                  <div
+                    key={start}
+                    className="trend-cell"
+                    data-current={point.current}
+                  >
+                    <strong className="num">
+                      {point.value === null ? "—" : toFa(point.value)}
+                    </strong>
+                    <span className="trend-when">
+                      {point.current ? "این هفته" : point.label}
+                    </span>
+                    <span className="trend-energy">
+                      {review ? moodLabel(review.answers.energy) : "مرور نداشتی"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="trend-note">
+              عدد بالا میانگین حالِ روزهایی است که ثبت کردی؛ زیرش همان انرژی‌ای
+              که پنجشنبه در مرور هفته دادی — یک پله، از {MOOD_LABELS[0]} تا{" "}
+              {MOOD_LABELS[4]}.
+            </p>
+          </>
+        ) : (
+          <p className="chart-empty">
+            چند روز حال را ثبت کن تا نمودار بیاید؛ تا آن وقت هر روزی که کار
+            کردی هم همین‌جا می‌نشیند.
+          </p>
+        )}
+      </section>
 
       {modules.cefr && (
       <section className="surface mt-6 p-5 sm:p-6" aria-labelledby="cefr-heading">

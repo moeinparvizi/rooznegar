@@ -62,7 +62,7 @@ function idea(patch: Partial<LinkedInIdea>): LinkedInIdea {
 function data(patch: Partial<AppDataV2> = {}): AppDataV2 {
   const settings = { ...DEFAULT_SETTINGS_V2, templateId: "athlete" as const };
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     updatedAt: "",
     profile: { name: "مریم" },
     settings,

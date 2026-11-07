@@ -10,7 +10,7 @@ export function createAccountData(
   const settings = { ...DEFAULT_SETTINGS_V2 };
   const iso = now.toISOString();
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     updatedAt: iso,
     profile,
     settings,

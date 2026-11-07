@@ -5,6 +5,8 @@ export type Category = string;
 export type Mode = "early" | "late";
 export type ThemeChoice = "light" | "dark" | "system";
 export type Priority = 1 | 2 | 3;
+/** Five levels, the same ladder the Thursday review already asks for energy. */
+export type MoodValue = 1 | 2 | 3 | 4 | 5;
 
 export interface Task {
   id: string;
@@ -36,6 +38,7 @@ export interface DayPlan {
   mode: Mode;
   overrides: Record<string, BlockOverride>;
   journal?: string;
+  mood?: MoodValue;
   langMinutes: number;
   deepMinutes: number;
   focusBlocks: number;
@@ -216,7 +219,7 @@ export interface AppSettingsV2 extends AppSettings {
 }
 
 export interface AppDataV2 {
-  schemaVersion: 2;
+  schemaVersion: 3;
   updatedAt: string;
   profile: Profile;
   settings: AppSettingsV2;

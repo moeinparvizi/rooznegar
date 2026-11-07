@@ -32,6 +32,7 @@ import type {
   LinkedInIdea,
   Mode,
   ModuleId,
+  MoodValue,
   Profile,
   Recovery,
   Task,
@@ -114,6 +115,7 @@ interface StoreState extends AppDataV2 {
   skipBlocks: (date: string, tasks: Task[]) => void;
   scheduleRecovery: (date: string, task: Task) => void;
   addJournal: (date: string, text: string) => void;
+  setMood: (date: string, mood: MoodValue | null) => void;
   setBlockComment: (date: string, blockId: string, comment: string) => void;
   logFocus: (log: FocusLog) => void;
   logCommuteLanguage: (date: string, minutes: number) => void;
@@ -301,6 +303,16 @@ export const useAppStore = create<StoreState>()(
             ...plan,
             journal: text.trim() || undefined,
           })),
+        ),
+
+      setMood: (date, mood) =>
+        set((state) =>
+          withDay(state, date, (plan) => {
+            const next = { ...plan };
+            if (mood) next.mood = mood;
+            else delete next.mood;
+            return next;
+          }),
         ),
 
       setBlockComment: (date, blockId, comment) =>
@@ -610,7 +622,7 @@ export const useAppStore = create<StoreState>()(
       exportJson: () => {
         const state = get();
         const data: AppDataV2 = {
-          schemaVersion: 2,
+          schemaVersion: 3,
           updatedAt: state.updatedAt,
           profile: state.profile,
           settings: state.settings,

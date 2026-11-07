@@ -353,8 +353,11 @@ h4 {
   height: 44px;
   flex: none;
   border-radius: 999px;
-  border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  background: color-mix(in srgb, var(--surface) 42%, transparent);
+  backdrop-filter: blur(14px) saturate(1.6);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 20%, transparent);
   color: var(--ink-2);
   transition: background 160ms ease, color 160ms ease, transform 160ms ease;
 }
@@ -394,9 +397,12 @@ h4 {
   display: inline-flex;
   padding: 3px;
   gap: 2px;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
   border-radius: 999px;
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent);
 }
 .segmented button {
   position: relative;
@@ -412,8 +418,14 @@ h4 {
   transition: color 180ms ease, background 180ms ease, box-shadow 180ms ease;
 }
 .segmented button[data-active="true"] {
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--surface) 92%, transparent),
+    color-mix(in srgb, var(--surface) 62%, transparent)
+  );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 28%, transparent),
+    0 2px 8px var(--shadow-sm);
   color: var(--green-deep);
 }
 [data-theme="dark"] .segmented button[data-active="true"] {
@@ -557,26 +569,79 @@ textarea.field {
   );
 }
 
-/* ---------- layout ---------- */
+/* ---------- layout · liquid glass ---------- */
 
 .app-frame {
   display: grid;
-  grid-template-columns: 236px minmax(0, 1fr);
+  grid-template-columns: 244px minmax(0, 1fr);
   min-height: 100dvh;
+}
+
+.app-window-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .side-rail {
   position: sticky;
   top: 0;
   height: 100dvh;
-  padding: 26px 20px 22px;
-  border-left: 1px solid var(--line);
+  padding: 24px 18px 20px;
+  border-left: 1px solid color-mix(in srgb, var(--ink) 7%, transparent);
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  background: color-mix(in srgb, var(--paper-2) 56%, transparent);
-  backdrop-filter: blur(10px);
+  gap: 22px;
+  background: color-mix(in srgb, var(--surface) 48%, transparent);
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
   overflow-y: auto;
+}
+
+.rail-nav {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rail-nav a {
+  position: relative;
+  z-index: 1;
+}
+
+/*
+ * The iOS-style sliding glass bubble. The app is RTL, so each step moves the
+ * bubble one slot away from the inline start: horizontally that is translateX
+ * to the physical left; the vertical rail just moves down.
+ */
+.lg-bubble {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 999px;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--surface) 82%, transparent),
+    color-mix(in srgb, var(--surface) 48%, transparent)
+  );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent),
+    0 4px 14px var(--shadow-sm);
+  transition: transform 520ms cubic-bezier(0.32, 1.26, 0.4, 1);
+}
+[data-theme="dark"] .lg-bubble {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 13%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #fff 7%, transparent),
+    0 4px 14px var(--shadow-sm);
+}
+
+.rail-nav .lg-bubble {
+  inset-inline: 4px;
+  top: 0;
+  height: calc((100% - (var(--n) - 1) * 4px) / var(--n));
+  transform: translateY(calc(var(--i) * (100% + 4px)));
 }
 
 .page-main {
@@ -616,26 +681,43 @@ textarea.field {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 58px;
+  min-height: 56px;
   padding: 8px clamp(16px, 4vw, 26px);
-  border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--paper) 82%, transparent);
-  backdrop-filter: blur(18px) saturate(1.2);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+  background: color-mix(in srgb, var(--paper) 62%, transparent);
+  backdrop-filter: blur(22px) saturate(1.8);
+  -webkit-backdrop-filter: blur(22px) saturate(1.8);
 }
 
 .mobile-tabbar {
   position: fixed;
-  inset-inline: 0;
-  bottom: 0;
+  inset-inline: 14px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
   z-index: 45;
   display: flex;
-  justify-content: space-around;
   align-items: stretch;
-  gap: 4px;
-  padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface) 86%, transparent);
-  backdrop-filter: blur(20px) saturate(1.25);
+  padding: 6px;
+  border-radius: 26px;
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  background: color-mix(in srgb, var(--surface) 52%, transparent);
+  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 26%, transparent),
+    0 12px 34px var(--shadow-md);
+}
+[data-theme="dark"] .mobile-tabbar {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent),
+    0 12px 34px var(--shadow-md);
+}
+
+.mobile-tabbar .lg-bubble {
+  inset-inline-start: 6px;
+  top: 6px;
+  bottom: 6px;
+  width: calc((100% - 12px) / var(--n));
+  transform: translateX(calc(var(--i) * -100%));
 }
 
 .tab-item {
@@ -646,15 +728,14 @@ textarea.field {
   justify-content: center;
   gap: 3px;
   min-height: 52px;
-  border-radius: 14px;
+  border-radius: 18px;
   color: var(--faint);
   font-size: 10.5px;
   font-weight: 500;
-  transition: color 160ms ease, background 160ms ease;
+  transition: color 220ms ease;
 }
 .tab-item[data-active="true"] {
   color: var(--green-deep);
-  background: var(--green-wash);
 }
 [data-theme="dark"] .tab-item[data-active="true"] {
   color: var(--green);
@@ -668,13 +749,72 @@ textarea.field {
     display: none;
   }
   .page-main {
-    padding-bottom: calc(82px + env(safe-area-inset-bottom));
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
   }
 }
 
+/* Desktop: the whole planner floats like a macOS window over the wallpaper. */
 @media (min-width: 1024px) {
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+  }
+  body {
+    box-sizing: border-box;
+    padding: 16px;
+  }
+  .app-frame {
+    height: 100%;
+    min-height: 0;
+    border-radius: 20px;
+    border: 1px solid color-mix(in srgb, var(--ink) 9%, transparent);
+    background: color-mix(in srgb, var(--paper) 82%, transparent);
+    backdrop-filter: blur(30px) saturate(1.5);
+    -webkit-backdrop-filter: blur(30px) saturate(1.5);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent),
+      0 24px 70px var(--shadow-lg);
+    overflow: hidden;
+  }
+  [data-theme="dark"] .app-frame {
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent),
+      0 24px 70px var(--shadow-lg);
+  }
+  .side-rail {
+    position: static;
+    height: auto;
+    min-height: 0;
+    border-left: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+    background: color-mix(in srgb, var(--surface) 28%, transparent);
+  }
+  .app-window-main {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+  }
   .mobile-topbar,
   .mobile-tabbar {
+    display: none;
+  }
+}
+
+@media print {
+  html,
+  body {
+    height: auto;
+    overflow: visible;
+    padding: 0;
+  }
+  .app-frame {
+    height: auto;
+    overflow: visible;
+    border-radius: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+  .lg-bubble {
     display: none;
   }
 }
@@ -5011,4 +5151,150 @@ button.sync-badge:hover {
   .editor-savebar {
     bottom: 74px;
   }
+}
+
+.mood-card {
+  padding: clamp(18px, 3vw, 24px);
+}
+.mood-scale {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--faint);
+  font-size: 10.5px;
+}
+.mood-hint {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.9;
+}
+
+.mood-chart {
+  margin: 22px 0 0;
+}
+.mood-chart svg {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  overflow: visible;
+}
+.mc-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.mc-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.2;
+}
+.mc-tick {
+  fill: var(--faint);
+  font-size: 8px;
+}
+.mc-tick-mood {
+  fill: color-mix(in srgb, var(--clay) 70%, var(--faint));
+  text-anchor: end;
+}
+.mc-bar {
+  fill: var(--green);
+  fill-opacity: 0.26;
+}
+.mc-bar[data-current="true"] {
+  fill-opacity: 0.52;
+}
+.mc-line {
+  fill: none;
+  stroke: var(--clay);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.mc-dot {
+  fill: var(--surface);
+  stroke: var(--clay);
+  stroke-width: 2;
+}
+.mc-day {
+  fill: var(--faint);
+  font-size: 8px;
+  text-anchor: middle;
+}
+.mc-day[data-current="true"] {
+  fill: var(--green);
+  font-weight: 700;
+}
+.mc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 10.5px;
+}
+.mc-key {
+  display: inline-block;
+  border-radius: 3px;
+}
+.mc-key-bar {
+  width: 12px;
+  height: 9px;
+  background: var(--green);
+  opacity: 0.45;
+}
+.mc-key-line {
+  width: 16px;
+  height: 2px;
+  margin-inline-start: 8px;
+  background: var(--clay);
+}
+.chart-empty {
+  margin-top: 16px;
+  padding: 14px 15px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.9;
+}
+
+.trend-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.trend-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 11px 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-2) 45%, transparent);
+}
+.trend-cell[data-current="true"] {
+  border-color: color-mix(in srgb, var(--green) 40%, var(--line));
+  background: var(--green-wash);
+}
+.trend-cell strong {
+  color: var(--clay);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.trend-when {
+  color: var(--muted);
+  font-size: 10px;
+}
+.trend-energy {
+  color: var(--faint);
+  font-size: 9.5px;
+}
+.trend-note {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.9;
 }

@@ -37,10 +37,19 @@ function v1() {
 }
 
 describe("migrateData", () => {
+  it("upgrades v2 data to v3 without replacing its custom weekly template", () => {
+    const original = migrateData(v1(), now)!;
+    original.weekTemplate[0].blocks[0].title = "برنامهٔ شخصی";
+    const migrated = migrateData({ ...original, schemaVersion: 2 }, now);
+    expect(migrated?.schemaVersion).toBe(3);
+    expect(migrated?.weekTemplate[0].blocks[0].title).toBe("برنامهٔ شخصی");
+    expect(migrated?.days["2026-11-01"].overrides.deep.done).toBe(true);
+  });
+
   it("migrates v1 and preserves days and settings", () => {
     const data = migrateData(v1(), now);
     expect(data).not.toBeNull();
-    expect(data?.schemaVersion).toBe(2);
+    expect(data?.schemaVersion).toBe(3);
     expect(data?.settings.wakeTime).toBe("07:10");
     expect(data?.settings.theme).toBe("dark");
     expect(data?.settings.defaultMode).toBe("late");
@@ -54,7 +63,7 @@ describe("migrateData", () => {
 
   it("unwraps a persisted zustand envelope", () => {
     const data = migrateData({ state: v1(), version: 1 }, now);
-    expect(data?.schemaVersion).toBe(2);
+    expect(data?.schemaVersion).toBe(3);
     expect(data?.updatedAt).toBe(now.toISOString());
   });
 
@@ -211,5 +220,35 @@ describe("migrateData", () => {
   it("rejects data without days", () => {
     expect(migrateData({ settings: {} }, now)).toBeNull();
     expect(migrateData("nope", now)).toBeNull();
+  });
+
+  it("keeps a mood inside the five levels and drops anything else", () => {
+    const stored = (extra: Record<string, unknown>) => {
+      const raw = v1();
+      return { ...raw, days: { "2026-11-01": { ...raw.days["2026-11-01"], ...extra } } };
+    };
+    expect(migrateData(stored({ mood: 3 }), now)?.days["2026-11-01"].mood).toBe(3);
+    expect(migrateData(stored({ mood: 9 }), now)?.days["2026-11-01"].mood).toBeUndefined();
+    expect(
+      migrateData(stored({ mood: "سه" }), now)?.days["2026-11-01"].mood,
+    ).toBeUndefined();
+  });
+
+  it("carries a block comment through and survives a plan without one", () => {
+    const withComment = {
+      ...v1(),
+      days: {
+        "2026-11-01": {
+          ...v1().days["2026-11-01"],
+          overrides: { deep: { done: true, comment: "نیم ساعت جلوتر از تقویم." } },
+        },
+      },
+    };
+    expect(
+      migrateData(withComment, now)?.days["2026-11-01"].overrides.deep.comment,
+    ).toBe("نیم ساعت جلوتر از تقویم.");
+    expect(
+      migrateData(v1(), now)?.days["2026-11-01"].overrides.deep.comment,
+    ).toBeUndefined();
   });
 });

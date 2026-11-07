@@ -6,7 +6,7 @@ import { categoryDef } from "@/lib/categories";
 import { formatDuration, toFa } from "@/lib/jalali";
 import { useAppStore, useToday } from "@/lib/store";
 import { useUIStore } from "@/lib/ui-store";
-import { weekSummary } from "@/lib/stats";
+import { MOOD_LABELS, weekSummary } from "@/lib/stats";
 import { Icon } from "./Icon";
 import { Sheet } from "./Sheet";
 
@@ -511,7 +511,6 @@ const REVIEW_STEPS = [
 
 const WIN_OPTIONS = ["زبان", "برنامه‌نویسی", "باشگاه", "لینکدین", "خواب"];
 const REDUCE_OPTIONS = ["لینکدین", "باشگاه", "کار", "هیچ‌چیز"];
-const ENERGY_LABELS = ["خسته", "کم", "معمولی", "خوب", "سرحال"];
 
 function toggleIn(list: string[], value: string) {
   return list.includes(value)
@@ -674,7 +673,7 @@ function ReviewWizard({ open }: { open: boolean }) {
                     className="energy-btn"
                     data-active={energy === value}
                     onClick={() => setEnergy(value)}
-                    aria-label={ENERGY_LABELS[value - 1]}
+                    aria-label={MOOD_LABELS[value - 1]}
                     aria-pressed={energy === value}
                   >
                     {toFa(value)}
@@ -686,7 +685,7 @@ function ReviewWizard({ open }: { open: boolean }) {
                 <span>سرحال</span>
               </div>
               <p className="mt-6 text-center text-[13px] font-medium text-ink-2">
-                {ENERGY_LABELS[energy - 1]}
+                {MOOD_LABELS[energy - 1]}
               </p>
             </div>
           </>
