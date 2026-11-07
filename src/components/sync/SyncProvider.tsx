@@ -11,6 +11,7 @@ import {
 } from "react";
 import { useAuth } from "@/components/auth/AuthContext";
 import { getAuthClient } from "@/lib/auth";
+import { PUBLIC_DEMO_USER_ID } from "@/lib/auth/public-demo";
 import { migrateData } from "@/lib/migrate";
 import { useAppStore } from "@/lib/store";
 import { useUIStore } from "@/lib/ui-store";
@@ -74,7 +75,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const showToast = useUIStore((state) => state.showToast);
   const [status, setStatus] = useState<SyncStatus>("local");
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
-  const userId = user?.id ?? null;
+  const userId = user?.id === PUBLIC_DEMO_USER_ID ? null : user?.id ?? null;
   const applying = useRef(false);
   const dirty = useRef(false);
   const manual = useRef(false);
@@ -267,7 +268,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   return (
     <SyncContext.Provider
       value={{
-        status: transport ? status : "local",
+        status: transport && userId ? status : "local",
         available: !!transport && !!userId,
         lastSyncedAt,
         retry,

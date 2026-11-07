@@ -16,6 +16,7 @@ import { deliveryFor, linkNotice } from "@/lib/auth/delivery";
 import { safeNext } from "@/lib/auth/safe-next";
 import type { AuthIntent, AuthResult } from "@/lib/auth/types";
 import { useAuth } from "./AuthContext";
+import { PUBLIC_DEMO_EMAIL, PUBLIC_DEMO_PASSWORD } from "@/lib/auth/public-demo";
 import { CodeInput } from "./CodeInput";
 
 type Tab = "signin" | "signup";
@@ -292,6 +293,24 @@ export function AuthScreen() {
             <span>
               این نسخه‌ی آزمایشی روی همین دستگاه است؛ کد تایید همیشه{" "}
               <b dir="ltr">123456</b> است.
+            </span>
+          </div>
+        )}
+
+        {mounted && client.kind === "supabase" && activeStep === "form" && (
+          <div className="auth-banner auth-banner-soft mt-5" role="note">
+            <Icon name="sparkle" size={16} />
+            <span>
+              برای امتحان برنامه از حساب دمو استفاده کن. داده‌های دمو فقط روی همین دستگاه می‌مانند.
+              <br />
+              ایمیل: <b dir="ltr">{PUBLIC_DEMO_EMAIL}</b>، رمز: <b dir="ltr">{PUBLIC_DEMO_PASSWORD}</b>
+              <br />
+              <button type="button" className="btn btn-soft btn-sm mt-2" onClick={() => {
+                switchTab("signin");
+                setMethod("password");
+                setEmail(PUBLIC_DEMO_EMAIL);
+                setPassword(PUBLIC_DEMO_PASSWORD);
+              }}>استفاده از حساب دمو</button>
             </span>
           </div>
         )}

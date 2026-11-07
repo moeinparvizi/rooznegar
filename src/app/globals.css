@@ -1580,11 +1580,11 @@ textarea.field {
 .tl-check[data-done="true"] {
   background: transparent;
   border-color: transparent;
-  color: var(--btn-ink);
+  color: #493500;
 }
 .tl-check[data-done="true"]::before {
-  background: var(--green);
-  border-color: var(--green);
+  background: #e3b843;
+  border-color: #e3b843;
 }
 .tl-check svg {
   position: relative;
@@ -2234,9 +2234,12 @@ textarea.field {
   transition: all 160ms ease;
 }
 .skip-option[data-active="true"] .skip-check {
-  border-color: var(--green);
-  background: var(--green);
+  border-color: #e3b843;
+  background: #e3b843;
+  color: #493500;
 }
+
+input[type="checkbox"], input[type="radio"] { accent-color: #e3b843; }
 
 
 @media print {
@@ -3382,8 +3385,8 @@ textarea.field {
 }
 .switch[data-on="true"] {
   justify-content: flex-end;
-  border-color: var(--green);
-  background: var(--green);
+  border-color: #e3b843;
+  background: #e3b843;
 }
 .switch-knob {
   display: block;
@@ -3395,7 +3398,7 @@ textarea.field {
   transition: transform 180ms ease;
 }
 .switch[data-on="true"] .switch-knob {
-  background: var(--btn-ink);
+  background: #493500;
 }
 
 .install-ready {

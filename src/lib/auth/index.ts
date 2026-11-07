@@ -1,5 +1,6 @@
 import { createDemoAuth } from "./demo";
 import { createSupabaseAuth } from "./supabase";
+import { createPublicDemoAuth } from "./public-demo";
 import type { AuthClient, AuthKind, AuthResult } from "./types";
 
 export function selectAuthKind(input: {
@@ -69,10 +70,10 @@ export function getAuthClient(): AuthClient {
     hostname: typeof window === "undefined" ? undefined : window.location.hostname,
   });
   if (kind === "supabase") {
-    client = createSupabaseAuth(
+    client = createPublicDemoAuth(createSupabaseAuth(
       process.env.NEXT_PUBLIC_SUPABASE_URL as string,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
-    );
+    ));
   } else if (kind === "demo") {
     client = createDemoAuth();
   } else {
