@@ -54,7 +54,7 @@ export const KIND_LABEL: Record<NoteKind, string> = {
   task: "یادداشت کار",
   journal: "ژورنال",
   review: "مرور هفته",
-  idea: "ایده‌ی لینکدین",
+  idea: "ایده",
 };
 
 function dayHref(date: string): string {
