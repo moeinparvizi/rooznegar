@@ -856,6 +856,12 @@ export default function TodayPage() {
                 </div>
               )}
 
+              <Link href="/notes/" className="journal-link">
+                <Icon name="list" size={15} />
+                دیدن همهٔ ژورنال‌ها و نوشته‌ها
+                <Icon name="arrowLeft" size={13} />
+              </Link>
+
               {modules.garden && (
                 <Link href="/progress/" className="journal-link">
                   <Bloom size={15} bare variant={2} />

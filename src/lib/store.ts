@@ -120,6 +120,7 @@ interface StoreState extends AppDataV2 {
   logFocus: (log: FocusLog) => void;
   logCommuteLanguage: (date: string, minutes: number) => void;
   logLinkedIn: (date: string, kind: "post" | "comment") => void;
+  removeLinkedIn: (date: string, kind: "post" | "comment") => void;
   saveReview: (review: WeekReview, applyTargets: boolean) => void;
   addIdea: (text: string, category?: Category) => void;
   setIdeaCategory: (id: string, category: Category) => void;
@@ -366,6 +367,14 @@ export const useAppStore = create<StoreState>()(
                 : plan.linkedinComments,
           })),
         ),
+
+      removeLinkedIn: (date, kind) =>
+        set((state) => {
+          const plan = state.days[date];
+          const key = kind === "post" ? "linkedinPosts" : "linkedinComments";
+          if (!plan || plan[key] <= 0) return {};
+          return withDay(state, date, (day) => ({ ...day, [key]: day[key] - 1 }));
+        }),
 
       saveReview: (review, applyTargets) =>
         set((state) => {

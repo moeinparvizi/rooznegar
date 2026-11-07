@@ -184,7 +184,6 @@ function NoteRow({
 export default function NotesPage() {
   const today = useToday();
   const days = useAppStore((s) => s.days);
-  const settings = useAppStore((s) => s.settings);
   const categories = useAppStore((s) => s.categories);
   const weekTemplate = useAppStore((s) => s.weekTemplate);
   const reviews = useAppStore((s) => s.reviews);
@@ -193,7 +192,6 @@ export default function NotesPage() {
   const setIdeaCategory = useAppStore((s) => s.setIdeaCategory);
   const showToast = useUIStore((s) => s.showToast);
 
-  const modules = settings.modules;
   const [range, setRange] = useState<NotesRange>("all");
   const [day, setDay] = useState(today);
   const [kind, setKind] = useState<NoteKind | "all">("all");
@@ -208,16 +206,8 @@ export default function NotesPage() {
     [days, weekTemplate, reviews, ideas],
   );
 
-  // A closed module hides its source; the backlog of ideas is one of them.
-  const allowedKinds = useMemo<NoteKind[]>(
-    () => [
-      "task",
-      ...(modules.journal ? (["journal"] as NoteKind[]) : []),
-      ...(modules.review ? (["review"] as NoteKind[]) : []),
-      "idea",
-    ],
-    [modules.journal, modules.review],
-  );
+  // Previously recorded writing remains available even if a module is disabled.
+  const allowedKinds = useMemo<NoteKind[]>(() => ["task", "journal", "review", "idea"], []);
 
   const everyDay = useMemo(
     () => collectNotes(source, { today, kinds: allowedKinds }),
@@ -341,7 +331,7 @@ export default function NotesPage() {
           <span className="dot" />
           {formatDateWithWeekday(parseDateKey(today))}
           <span className="text-faint">·</span>
-          <span>ایده‌ها و یادداشت‌ها</span>
+          <span>نوشته‌ها و ایده‌ها</span>
         </p>
         <h1 className="hero-title">
           هر چه نوشتی، یک‌جا.

@@ -86,6 +86,7 @@ export default function ProgressPage() {
   const scheduleIdea = useAppStore((s) => s.scheduleIdea);
   const removeIdea = useAppStore((s) => s.removeIdea);
   const logLinkedIn = useAppStore((s) => s.logLinkedIn);
+  const removeLinkedIn = useAppStore((s) => s.removeLinkedIn);
   const openFocus = useUIStore((s) => s.openFocus);
   const showToast = useUIStore((s) => s.showToast);
 
@@ -572,6 +573,11 @@ export default function ProgressPage() {
               <Icon name="plus" size={13} />
               ثبت پست امروز
             </button>
+            <p className="mt-1 text-[11px] text-muted">امروز: {toFa(days[today]?.linkedinPosts ?? 0)} پست</p>
+            <button type="button" className="btn btn-ghost btn-sm" disabled={!days[today]?.linkedinPosts} onClick={() => {
+              removeLinkedIn(today, "post");
+              showToast("یک پست از شمارش امروز کم شد.");
+            }}>کم‌کردن یک پست امروز</button>
           </div>
           <div className="li-goal">
             <div className="flex items-baseline justify-between">
@@ -601,6 +607,11 @@ export default function ProgressPage() {
               <Icon name="plus" size={13} />
               ثبت کامنت امروز
             </button>
+            <p className="mt-1 text-[11px] text-muted">امروز: {toFa(days[today]?.linkedinComments ?? 0)} کامنت</p>
+            <button type="button" className="btn btn-ghost btn-sm" disabled={!days[today]?.linkedinComments} onClick={() => {
+              removeLinkedIn(today, "comment");
+              showToast("یک کامنت از شمارش امروز کم شد.");
+            }}>کم‌کردن یک کامنت امروز</button>
           </div>
         </div>
 
