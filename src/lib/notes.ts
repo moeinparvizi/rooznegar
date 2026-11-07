@@ -184,6 +184,7 @@ export function collectNotes(
       date: "",
       text,
       label: KIND_LABEL.idea,
+      category: entry.category ?? "linkedin",
       status: entry.status,
       href: "/progress/",
     });

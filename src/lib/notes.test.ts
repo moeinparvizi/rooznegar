@@ -62,7 +62,7 @@ function idea(patch: Partial<LinkedInIdea>): LinkedInIdea {
 function data(patch: Partial<AppDataV2> = {}): AppDataV2 {
   const settings = { ...DEFAULT_SETTINGS_V2, templateId: "athlete" as const };
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     updatedAt: "",
     profile: { name: "مریم" },
     settings,
@@ -98,6 +98,11 @@ function asSet(notes: NoteItem[], expected: string[]) {
 }
 
 describe("collectNotes sources", () => {
+  it("filters ideas by their chosen category and treats older ideas as LinkedIn", () => {
+    const source = data({ ideas: [idea({ id: "a", text: "زبان", category: "language" }), idea({ id: "b", text: "قدیمی" })] });
+    expect(collectNotes(source, { category: "language" }).map((note) => note.text)).toEqual(["زبان"]);
+    expect(collectNotes(source, { category: "linkedin" }).map((note) => note.text)).toEqual(["قدیمی"]);
+  });
   it("reads a block comment as a task note bound to its block", () => {
     const id = session.id;
     const notes = collectNotes(

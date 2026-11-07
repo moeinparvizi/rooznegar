@@ -22,6 +22,7 @@ import {
 import { useAppStore, useToday } from "@/lib/store";
 import { useUIStore } from "@/lib/ui-store";
 import { Icon } from "@/components/Icon";
+import { IdeaForm } from "@/components/IdeaForm";
 import type { Category } from "@/lib/types";
 
 const RANGES: { value: NotesRange; label: string }[] = [
@@ -48,6 +49,7 @@ function NoteRow({
   onSave,
   onCancel,
   onDelete,
+  onCategory,
 }: {
   note: NoteItem;
   categories: ReturnType<typeof useAppStore.getState>["categories"];
@@ -59,6 +61,7 @@ function NoteRow({
   onSave: () => void;
   onCancel: () => void;
   onDelete: () => void;
+  onCategory: (category: Category) => void;
 }) {
   const meta = note.category
     ? categoryMeta(note.category, categories)
@@ -146,6 +149,14 @@ function NoteRow({
 
       {!editing && (
         <div className="note-actions">
+          {note.kind === "idea" && (
+            <label>
+              <span className="sr-only">دستهٔ ایده</span>
+              <select className="field note-select" value={note.category ?? "linkedin"} onChange={(event) => onCategory(event.target.value)}>
+                {categories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+              </select>
+            </label>
+          )}
           <Link
             href={note.href}
             className="btn btn-ghost btn-sm"
@@ -179,6 +190,7 @@ export default function NotesPage() {
   const reviews = useAppStore((s) => s.reviews);
   const ideas = useAppStore((s) => s.ideas);
   const setBlockComment = useAppStore((s) => s.setBlockComment);
+  const setIdeaCategory = useAppStore((s) => s.setIdeaCategory);
   const showToast = useUIStore((s) => s.showToast);
 
   const modules = settings.modules;
@@ -202,9 +214,9 @@ export default function NotesPage() {
       "task",
       ...(modules.journal ? (["journal"] as NoteKind[]) : []),
       ...(modules.review ? (["review"] as NoteKind[]) : []),
-      ...(modules.linkedin ? (["idea"] as NoteKind[]) : []),
+      "idea",
     ],
-    [modules.journal, modules.review, modules.linkedin],
+    [modules.journal, modules.review],
   );
 
   const everyDay = useMemo(
@@ -316,6 +328,7 @@ export default function NotesPage() {
         setDraft("");
       }}
       onDelete={() => deleteEdit(note)}
+      onCategory={(category) => setIdeaCategory(note.id.slice("idea:".length), category)}
     />
   );
 
@@ -338,6 +351,10 @@ export default function NotesPage() {
           </span>
         </h1>
       </header>
+
+      <section className="surface mt-5 p-5" aria-label="افزودن ایده">
+        <IdeaForm onAdded={() => { setRange("all"); setKind("idea"); setCategory("all"); setStatus("all"); }} />
+      </section>
 
       <section className="surface mt-5 p-5" aria-label="فیلتر یادداشت‌ها">
         <div className="note-filters">

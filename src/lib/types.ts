@@ -73,6 +73,7 @@ export interface WeekReview {
 export interface LinkedInIdea {
   id: string;
   text: string;
+  category?: Category;
   status: "idea" | "scheduled" | "posted";
   publishAt?: string;
 }
@@ -219,7 +220,7 @@ export interface AppSettingsV2 extends AppSettings {
 }
 
 export interface AppDataV2 {
-  schemaVersion: 3;
+  schemaVersion: 4;
   updatedAt: string;
   profile: Profile;
   settings: AppSettingsV2;

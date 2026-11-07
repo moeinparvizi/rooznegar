@@ -37,19 +37,26 @@ function v1() {
 }
 
 describe("migrateData", () => {
-  it("upgrades v2 data to v3 without replacing its custom weekly template", () => {
+  it("upgrades v2 data without replacing its custom weekly template", () => {
     const original = migrateData(v1(), now)!;
     original.weekTemplate[0].blocks[0].title = "برنامهٔ شخصی";
     const migrated = migrateData({ ...original, schemaVersion: 2 }, now);
-    expect(migrated?.schemaVersion).toBe(3);
+    expect(migrated?.schemaVersion).toBe(4);
     expect(migrated?.weekTemplate[0].blocks[0].title).toBe("برنامهٔ شخصی");
     expect(migrated?.days["2026-11-01"].overrides.deep.done).toBe(true);
+  });
+
+  it("upgrades v3 ideas without losing them and assigns their original LinkedIn category", () => {
+    const original = migrateData(v1(), now)!;
+    const migrated = migrateData({ ...original, schemaVersion: 3, ideas: [{ id: "old", text: "ایدهٔ قبلی", status: "idea" }] }, now);
+    expect(migrated?.schemaVersion).toBe(4);
+    expect(migrated?.ideas[0]).toMatchObject({ id: "old", text: "ایدهٔ قبلی", category: "linkedin" });
   });
 
   it("migrates v1 and preserves days and settings", () => {
     const data = migrateData(v1(), now);
     expect(data).not.toBeNull();
-    expect(data?.schemaVersion).toBe(3);
+    expect(data?.schemaVersion).toBe(4);
     expect(data?.settings.wakeTime).toBe("07:10");
     expect(data?.settings.theme).toBe("dark");
     expect(data?.settings.defaultMode).toBe("late");
@@ -63,7 +70,7 @@ describe("migrateData", () => {
 
   it("unwraps a persisted zustand envelope", () => {
     const data = migrateData({ state: v1(), version: 1 }, now);
-    expect(data?.schemaVersion).toBe(3);
+    expect(data?.schemaVersion).toBe(4);
     expect(data?.updatedAt).toBe(now.toISOString());
   });
 

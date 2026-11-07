@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { CEFF_LEVELS, MUSCLE_ROTATION } from "@/lib/categories";
 import {
@@ -34,6 +34,7 @@ import { useUIStore } from "@/lib/ui-store";
 import { Bloom } from "@/components/Bloom";
 import { Icon } from "@/components/Icon";
 import { MoodChart } from "@/components/MoodChart";
+import { IdeaForm } from "@/components/IdeaForm";
 
 function BarChart({
   points,
@@ -82,14 +83,12 @@ export default function ProgressPage() {
   const reviews = useAppStore((s) => s.reviews);
   const ideas = useAppStore((s) => s.ideas);
   const recoveries = useAppStore((s) => s.recoveries);
-  const addIdea = useAppStore((s) => s.addIdea);
   const scheduleIdea = useAppStore((s) => s.scheduleIdea);
   const removeIdea = useAppStore((s) => s.removeIdea);
   const logLinkedIn = useAppStore((s) => s.logLinkedIn);
   const openFocus = useUIStore((s) => s.openFocus);
   const showToast = useUIStore((s) => s.showToast);
 
-  const [ideaDraft, setIdeaDraft] = useState("");
 
   const data = useMemo(
     () => ({
@@ -167,13 +166,6 @@ export default function ProgressPage() {
   );
   const focusMax = Math.max(1, ...focusWeeks.map((point) => point.blocks));
 
-  const addIdeaNow = () => {
-    const clean = ideaDraft.trim();
-    if (!clean) return;
-    addIdea(clean);
-    setIdeaDraft("");
-    showToast("ایده ذخیره شد؛ بعداً وقتش می‌رسد.");
-  };
 
   const schedule = (id: string) => {
     scheduleIdea(id);
@@ -613,34 +605,7 @@ export default function ProgressPage() {
         </div>
 
         <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--line)" }}>
-          <label htmlFor="idea-input" className="field-label">
-            ایده‌ی تازه
-          </label>
-          <div className="flex gap-2">
-            <input
-              id="idea-input"
-              className="field"
-              value={ideaDraft}
-              onChange={(event) => setIdeaDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  addIdeaNow();
-                }
-              }}
-              placeholder="یک جمله، یک تجربه، یک سؤال…"
-              maxLength={140}
-            />
-            <button
-              type="button"
-              className="icon-btn shrink-0"
-              onClick={addIdeaNow}
-              aria-label="ذخیره‌ی ایده"
-              disabled={!ideaDraft.trim()}
-            >
-              <Icon name="plus" size={18} />
-            </button>
-          </div>
+          <IdeaForm />
 
           <div className="mt-4 grid gap-5 lg:grid-cols-2">
             <div>

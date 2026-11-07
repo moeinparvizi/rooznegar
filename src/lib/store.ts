@@ -121,7 +121,8 @@ interface StoreState extends AppDataV2 {
   logCommuteLanguage: (date: string, minutes: number) => void;
   logLinkedIn: (date: string, kind: "post" | "comment") => void;
   saveReview: (review: WeekReview, applyTargets: boolean) => void;
-  addIdea: (text: string) => void;
+  addIdea: (text: string, category?: Category) => void;
+  setIdeaCategory: (id: string, category: Category) => void;
   scheduleIdea: (id: string) => void;
   removeIdea: (id: string) => void;
   updateSettings: (patch: Partial<AppSettingsV2>) => void;
@@ -393,17 +394,21 @@ export const useAppStore = create<StoreState>()(
           return stamp({ reviews, settings: nextSettings });
         }),
 
-      addIdea: (text) =>
+      addIdea: (text, category = "linkedin") =>
         set((state) => {
           const clean = text.trim();
           if (!clean) return {};
           const idea: LinkedInIdea = {
             id: `idea-${Date.now()}`,
             text: clean,
+            category,
             status: "idea",
           };
           return stamp({ ideas: [idea, ...state.ideas] });
         }),
+
+      setIdeaCategory: (id, category) =>
+        set((state) => stamp({ ideas: state.ideas.map((idea) => idea.id === id ? { ...idea, category } : idea) })),
 
       scheduleIdea: (id) =>
         set((state) =>
@@ -622,7 +627,7 @@ export const useAppStore = create<StoreState>()(
       exportJson: () => {
         const state = get();
         const data: AppDataV2 = {
-          schemaVersion: 3,
+          schemaVersion: 4,
           updatedAt: state.updatedAt,
           profile: state.profile,
           settings: state.settings,

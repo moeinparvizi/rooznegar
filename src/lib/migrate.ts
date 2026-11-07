@@ -240,11 +240,11 @@ export function migrateData(input: unknown, now: Date = new Date()): AppDataV2 |
       }
     : { name: "" };
   const weekTemplate =
-    (root.schemaVersion === 2 || root.schemaVersion === 3)
+    (root.schemaVersion === 2 || root.schemaVersion === 3 || root.schemaVersion === 4)
       ? normalizeWeekTemplate(root.weekTemplate, settings)
       : defaultWeekTemplate(settings);
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     updatedAt:
       typeof root.updatedAt === "string" ? root.updatedAt : now.toISOString(),
     profile,
@@ -253,7 +253,10 @@ export function migrateData(input: unknown, now: Date = new Date()): AppDataV2 |
     weekTemplate,
     days: normalizeDays(root.days),
     reviews: normalizeArray<WeekReview>(root.reviews),
-    ideas: normalizeArray<LinkedInIdea>(root.ideas),
+    ideas: normalizeArray<LinkedInIdea>(root.ideas).map((idea) => ({
+      ...idea,
+      category: typeof idea.category === "string" && idea.category ? idea.category : "linkedin",
+    })),
     recoveries: normalizeArray<Recovery>(root.recoveries),
     seededAt:
       typeof root.seededAt === "string" ? root.seededAt : now.toISOString(),
